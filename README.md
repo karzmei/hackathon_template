@@ -45,6 +45,27 @@ streamlit run frontend/app.py
 
 Open `http://localhost:8501` in your browser. Enter text, click "Analyze Text", and you should see a JSON response with word count and character count.
 
+## LLM Analysis
+
+The project includes a small LLM analysis endpoint at `POST /llm/analyze` with the following supported tasks:
+
+- `summarize`
+- `extract_keywords`
+- `continue`
+- `rewrite_clearer`
+
+By default the backend uses a deterministic `mock` provider and requires no API keys. To use OpenAI as the provider, set the environment variables before starting the backend:
+
+```bash
+export LLM_PROVIDER=openai
+export OPENAI_API_KEY="your_api_key_here"
+# optional
+export OPENAI_MODEL="gpt-4o-mini"
+uvicorn backend.main:app --reload --port 8000
+```
+
+Then use the Streamlit "LLM Text Analysis" UI to pick a task and run it. If `LLM_PROVIDER` is not set or is `mock`, the app will run locally without any API keys.
+
 ## File structure
 
 - `backend/schemas.py` — Pydantic request/response models
