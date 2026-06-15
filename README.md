@@ -41,7 +41,7 @@ uvicorn backend.main:app --reload --port 8000
 streamlit run frontend/app.py
 ```
 
-## Testing
+## Try It
 
 Open `http://localhost:8501` in your browser. Enter text, click "Analyze Text", and you should see a JSON response with word count and character count.
 
@@ -54,7 +54,7 @@ The project includes a small LLM analysis endpoint at `POST /llm/analyze` with t
 - `continue`
 - `rewrite_clearer`
 
-By default the backend uses a deterministic `mock` provider and requires no API keys. To use OpenAI as the provider, set the environment variables before starting the backend:
+By default the backend uses a deterministic `mock` provider and requires no API keys. You can also copy `.env.example` to `.env` and adjust the values there. To use OpenAI as the provider, set the environment variables before starting the backend:
 
 ```bash
 export LLM_PROVIDER=openai
@@ -69,5 +69,6 @@ Then use the Streamlit "LLM Text Analysis" UI to pick a task and run it. If `LLM
 ## File structure
 
 - `backend/schemas.py` — Pydantic request/response models
-- `backend/main.py` — FastAPI app with a single `/analyze` endpoint
+- `backend/main.py` — FastAPI app with `/analyze` and `/llm/analyze` endpoints
+- `backend/services/llm_service.py` — small mock/OpenAI LLM wrapper
 - `frontend/app.py` — Streamlit app sending text to the backend
