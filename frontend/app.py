@@ -5,6 +5,21 @@ import streamlit as st
 
 BACKEND_URL = "http://localhost:8000/analyze"
 
+
+def format_backend_error(exc: requests.RequestException) -> str:
+    response = getattr(exc, "response", None)
+    if response is None:
+        return str(exc)
+
+    try:
+        payload = response.json()
+    except ValueError:
+        return response.text or str(exc)
+
+    detail = payload.get("detail")
+    return detail or str(exc)
+
+
 st.title("Hackathon Demo Starter")
 st.write("Paste messy notes and get a structured markdown summary.")
 
@@ -32,6 +47,6 @@ if st.button("Generate Summary"):
                 st.success("Summary generated")
                 st.markdown(data.get("result", ""))
             except requests.RequestException as exc:
-                st.error(f"Backend request failed: {exc}")
+                st.error(f"Backend request failed: {format_backend_error(exc)}")
             except json.JSONDecodeError:
                 st.error("Failed to decode backend response.")
