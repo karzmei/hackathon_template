@@ -41,34 +41,34 @@ uvicorn backend.main:app --reload --port 8000
 streamlit run frontend/app.py
 ```
 
-## Try It
+## Environment
 
-Open `http://localhost:8501` in your browser. Enter text, click "Analyze Text", and you should see a JSON response with word count and character count.
-
-## LLM Analysis
-
-The project includes a small LLM analysis endpoint at `POST /llm/analyze` with the following supported tasks:
-
-- `summarize`
-- `extract_keywords`
-- `continue`
-- `rewrite_clearer`
-
-By default the backend uses a deterministic `mock` provider and requires no API keys. You can also copy `.env.example` to `.env` and adjust the values there. To use OpenAI as the provider, set the environment variables before starting the backend:
+Copy `.env.example` to `.env` and set your OpenRouter credentials:
 
 ```bash
-export LLM_PROVIDER=openai
-export OPENAI_API_KEY="your_api_key_here"
-# optional
-export OPENAI_MODEL="gpt-4o-mini"
-uvicorn backend.main:app --reload --port 8000
+OPENROUTER_API_KEY=sk-or-v1-...
+OPENROUTER_MODEL=your-openrouter-model
 ```
 
-Then use the Streamlit "LLM Text Analysis" UI to pick a task and run it. If `LLM_PROVIDER` is not set or is `mock`, the app will run locally without any API keys.
+The API key is read only by the FastAPI backend and is never sent to the Streamlit frontend.
+
+## Try It
+
+Open `http://localhost:8501` in your browser. Paste messy notes, choose a tone, and click "Generate Summary".
+
+Example input:
+
+```text
+Met Sarah from Acme. They need onboarding docs by Friday. Pricing is unclear.
+Ask Alex about enterprise plan. Sarah cares about security review and timeline.
+Next call maybe Tuesday afternoon.
+```
+
+The backend calls OpenRouter once and returns a markdown result with a summary and open questions.
 
 ## File structure
 
 - `backend/schemas.py` — Pydantic request/response models
-- `backend/main.py` — FastAPI app with `/analyze` and `/llm/analyze` endpoints
-- `backend/services/llm_service.py` — small mock/OpenAI LLM wrapper
+- `backend/main.py` — FastAPI app with `/analyze`
+- `backend/llm_client.py` — OpenRouter chat-completions helper
 - `frontend/app.py` — Streamlit app sending text to the backend

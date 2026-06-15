@@ -2,5 +2,4 @@ fastapi
 uvicorn[standard]
 streamlit
 requests
-openai
 python-dotenv
