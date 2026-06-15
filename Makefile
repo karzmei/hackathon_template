@@ -1,4 +1,4 @@
-.PHONY: install backend frontend venv
+.PHONY: install backend frontend test venv
 
 install:
 	python3 -m venv .venv
@@ -12,3 +12,6 @@ backend:
 
 frontend:
 	. .venv/bin/activate && streamlit run frontend/app.py
+
+test:
+	. .venv/bin/activate && python -m unittest discover -s tests

@@ -10,6 +10,7 @@ Use `make` to manage the development environment:
 make install    # One-time setup: create venv and install dependencies
 make backend    # Terminal 1: start FastAPI backend
 make frontend   # Terminal 2: start Streamlit frontend
+make test       # Run smoke tests
 make venv       # Show how to manually activate the virtual environment
 ```
 
