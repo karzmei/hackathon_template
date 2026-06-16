@@ -1,3 +1,5 @@
+This repo was created in close collaboration with github copilot and codex. :]
+
 # Hackathon Demo Template
 
 A minimal AI/data prototype starter with a Streamlit frontend and FastAPI backend.
