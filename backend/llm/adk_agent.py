@@ -1,16 +1,18 @@
-"""The single LLM path: Google ADK driving Azure OpenAI via LiteLLM.
+"""The single LLM path: Google ADK driving Azure OpenAI or Google Gemini via LiteLLM.
 
 Every model call in the pipeline goes through `run_agent`, which returns the text
-plus token usage and a USD cost computed from the deterministic price table in
-`config.py`. That is what makes the per-alert cost meter possible.
+plus token usage and a USD cost from the deterministic price table in `config.py`.
 
-Offline behaviour: if Azure is not configured, `run_agent` returns the caller's
-`offline_response` (clearly an explicit demo fallback, not a silent mock) with an
-estimated token count, so the whole pipeline still runs end to end without a key.
+Priority: Azure > Google Gemini > offline stub.
+
+Offline behaviour: if neither Azure nor Google is configured, `run_agent` returns
+the caller's `offline_response` (clearly labelled demo fallback, not a silent mock)
+with an estimated token count, so the whole pipeline runs end to end without any key.
 """
 
 from __future__ import annotations
 
+import os
 import uuid
 from dataclasses import dataclass
 
@@ -31,36 +33,15 @@ class LlmResult:
 
 
 def _estimate_tokens(text: str) -> int:
-    """Rough token estimate (~4 chars/token) for offline cost figures."""
     return max(1, len(text) // 4)
 
 
-async def run_agent(
+async def _run_with_litellm(
     prompt: str,
-    deployment: str,
-    *,
-    system_instruction: str = "You are a precise KYC analysis assistant.",
-    offline_response: str = "",
-) -> LlmResult:
-    """Run a one-shot agent turn and return text + cost.
-
-    `deployment` is the Azure deployment name; it is passed to LiteLLM as
-    `azure/<deployment>` and is also the key into the price table.
-    """
-    if not config.azure_configured():
-        text = offline_response or "[offline demo - no Azure key configured]"
-        tokens_in = _estimate_tokens(prompt + system_instruction)
-        tokens_out = _estimate_tokens(text)
-        return LlmResult(
-            text=text,
-            tokens_in=tokens_in,
-            tokens_out=tokens_out,
-            usd=config.usd_for(deployment, tokens_in, tokens_out),
-            model=f"azure/{deployment}",
-            offline=True,
-        )
-
-    # Imported lazily so the offline path (and tests) does not require google-adk.
+    model: str,
+    system_instruction: str,
+) -> tuple[str, int, int]:
+    """Run one turn via Google ADK + LiteLLM; return (text, tokens_in, tokens_out)."""
     from google.adk.agents import LlmAgent
     from google.adk.models.lite_llm import LiteLlm
     from google.adk.runners import Runner
@@ -68,7 +49,7 @@ async def run_agent(
     from google.genai import types
 
     agent = LlmAgent(
-        model=LiteLlm(model=f"azure/{deployment}"),
+        model=LiteLlm(model=model),
         name="driftwatch_agent",
         instruction=system_instruction,
     )
@@ -93,17 +74,64 @@ async def run_agent(
         if event.is_final_response() and event.content and event.content.parts:
             text = event.content.parts[0].text or ""
 
-    # Fall back to an estimate if the provider did not report usage.
     if tokens_in == 0:
         tokens_in = _estimate_tokens(prompt + system_instruction)
     if tokens_out == 0:
         tokens_out = _estimate_tokens(text)
 
+    return text, tokens_in, tokens_out
+
+
+async def run_agent(
+    prompt: str,
+    deployment: str,
+    *,
+    system_instruction: str = "You are a precise KYC analysis assistant.",
+    offline_response: str = "",
+) -> LlmResult:
+    """Run a one-shot agent turn and return text + cost.
+
+    `deployment` is the Azure deployment name or a hint used to select the
+    equivalent Gemini model when Azure is unavailable.
+    """
+    if config.azure_configured():
+        model = f"azure/{deployment}"
+        text, tokens_in, tokens_out = await _run_with_litellm(prompt, model, system_instruction)
+        return LlmResult(
+            text=text,
+            tokens_in=tokens_in,
+            tokens_out=tokens_out,
+            usd=config.usd_for(model, tokens_in, tokens_out),
+            model=model,
+            offline=False,
+        )
+
+    if config.google_configured():
+        os.environ.setdefault("GEMINI_API_KEY", config.GOOGLE_API_KEY)
+        # Map Azure deployment hint to equivalent Gemini tier.
+        model = (
+            config.GEMINI_DEEP
+            if deployment == config.DEPLOYMENT_DEEP
+            else config.GEMINI_REASONING
+        )
+        text, tokens_in, tokens_out = await _run_with_litellm(prompt, model, system_instruction)
+        return LlmResult(
+            text=text,
+            tokens_in=tokens_in,
+            tokens_out=tokens_out,
+            usd=config.usd_for(model, tokens_in, tokens_out),
+            model=model,
+            offline=False,
+        )
+
+    text = offline_response or "[offline demo - no LLM key configured]"
+    tokens_in = _estimate_tokens(prompt + system_instruction)
+    tokens_out = _estimate_tokens(text)
     return LlmResult(
         text=text,
         tokens_in=tokens_in,
         tokens_out=tokens_out,
         usd=config.usd_for(deployment, tokens_in, tokens_out),
-        model=f"azure/{deployment}",
-        offline=False,
+        model=f"offline/{deployment}",
+        offline=True,
     )
