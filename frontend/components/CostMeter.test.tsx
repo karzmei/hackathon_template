@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { CostMeter } from "./CostMeter";
-import type { Cost } from "@/lib/api";
+import { makeCost } from "@/test/fixtures";
 
-const cost: Cost = { tokens_in: 120, tokens_out: 80, usd: 0.001316 };
+const cost = makeCost();
 
 describe("CostMeter", () => {
   it("formats usd to four decimals and sums the tokens", () => {

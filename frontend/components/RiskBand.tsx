@@ -1,4 +1,6 @@
 import { DriftScore } from "@/lib/api";
+import { bandTone } from "@/lib/risk";
+import { SeverityBadge } from "@/components/ui/severity-badge";
 
 // Most-important-first: the risk delta and what it implies, before any raw signals.
 export function RiskBand({
@@ -10,26 +12,33 @@ export function RiskBand({
   drift: DriftScore;
   implies: string;
 }) {
-  const tone =
-    drift.band === "high"
-      ? "border-red-400 bg-red-50"
-      : drift.band === "medium"
-        ? "border-amber-400 bg-amber-50"
-        : "border-emerald-400 bg-emerald-50";
+  const tone = bandTone(drift.band);
+  const accent =
+    tone === "danger"
+      ? "var(--color-border-danger)"
+      : tone === "warning"
+        ? "var(--color-border-warning)"
+        : "var(--color-border-success)";
 
   return (
-    <section className={`rounded-lg border-l-4 ${tone} p-4`}>
-      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-        <h2 className="font-serif text-2xl text-navy">{riskBand}</h2>
-        <span className="text-sm text-ink">
+    <section
+      className="rounded-xl border bg-card p-5 ring-1 ring-foreground/10"
+      style={{ borderLeft: `4px solid ${accent}` }}
+    >
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <h2 className="font-serif text-2xl font-semibold tracking-tight">
+          {riskBand}
+        </h2>
+        <SeverityBadge tone={tone} label={drift.band.toUpperCase()} />
+        <span className="text-sm text-muted-foreground">
           confidence {(drift.confidence * 100).toFixed(0)}%
         </span>
-        <span className="text-sm text-ink">
+        <span className="text-sm text-muted-foreground">
           {drift.invalidated_assumptions.length} invalidated assumption
           {drift.invalidated_assumptions.length === 1 ? "" : "s"}
         </span>
       </div>
-      <p className="mt-2 text-ink">{implies}</p>
+      <p className="mt-3 leading-relaxed text-foreground">{implies}</p>
     </section>
   );
 }

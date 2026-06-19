@@ -13,6 +13,9 @@ next-env.d.ts
 *.tsbuildinfo
 .env.local
 coverage/
+test-results/
+playwright-report/
+.playwright/
 
 # Misc
 .DS_Store

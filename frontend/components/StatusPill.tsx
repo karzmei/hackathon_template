@@ -1,25 +1,15 @@
 import { AlertStatus } from "@/lib/api";
+import { SeverityBadge, type SeverityTone } from "@/components/ui/severity-badge";
 
-const LABELS: Record<AlertStatus, string> = {
-  new: "New",
-  needs_review: "Needs review",
-  escalated: "Escalated",
-  dismissed: "Dismissed",
-  actioned: "Actioned",
-};
-
-const STYLES: Record<AlertStatus, string> = {
-  new: "bg-slate-200 text-slate-700",
-  needs_review: "bg-amber-200 text-amber-900",
-  escalated: "bg-red-200 text-red-900",
-  dismissed: "bg-slate-200 text-slate-500",
-  actioned: "bg-emerald-200 text-emerald-900",
+const META: Record<AlertStatus, { label: string; tone: SeverityTone }> = {
+  new: { label: "New", tone: "neutral" },
+  needs_review: { label: "Needs review", tone: "warning" },
+  escalated: { label: "Escalated", tone: "danger" },
+  dismissed: { label: "Dismissed", tone: "neutral" },
+  actioned: { label: "Actioned", tone: "success" },
 };
 
 export function StatusPill({ status }: { status: AlertStatus }) {
-  return (
-    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STYLES[status]}`}>
-      {LABELS[status]}
-    </span>
-  );
+  const { label, tone } = META[status];
+  return <SeverityBadge tone={tone} label={label} size="sm" />;
 }
