@@ -1,5 +1,18 @@
+# Python / backend
 .venv/
 __pycache__/
 *.pyc
-.streamlit/
 .env
+*.db
+
+# Node / Next.js frontend
+node_modules/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+.env.local
+
+# Misc
+.DS_Store
+.claude/

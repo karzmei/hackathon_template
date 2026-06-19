@@ -4,46 +4,94 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A minimal hackathon starter template for AI/data prototypes: a **Streamlit** frontend that posts free-text to a **FastAPI** backend, which calls **OpenRouter** (chat completions) once and returns structured markdown. The current demo turns messy notes into a summary + open questions. It is intentionally small and meant to be forked and extended quickly during a hackathon — favor minimal, targeted edits over rewrites.
+**DRIFTWATCH** — event-driven KYC drift intelligence (AMINA Bank, SwissHacks 2026). It models each
+corporate client as a living KYC profile and measures drift from the onboarded baseline: ingest
+public signals (Layer 1), compare against an internal baseline (Layer 2), score drift, and emit a
+cited case file with a recommended action. This repo is a hackathon scaffold — a working vertical
+slice with deliberately stubbed parts so the team can build pieces independently. Favor minimal,
+targeted edits; keep the parts independently runnable.
 
-## Commands
+Writing rule for generated text, comments, and copy: do not use em dashes or double dashes; use
+semicolons, commas, or shorter sentences.
 
-The `Makefile` targets assume a bash/POSIX shell (`. .venv/bin/activate`). On this Windows machine, run the underlying commands directly in PowerShell instead:
+## Stack
+
+- Frontend: Next.js (App Router, TypeScript, Tailwind) in `frontend/`
+- Backend: Python, FastAPI, Pydantic in `backend/`
+- LLM: Google ADK driving Azure OpenAI via LiteLLM (`backend/llm/adk_agent.py`)
+
+Note: the original pitch brief specced a TypeScript/Hono/Azure stack; the chosen stack here is
+Next.js + Python + Google ADK. Treat the brief as domain context, not the tech stack.
+
+## Commands (Windows / PowerShell)
 
 ```powershell
-python -m venv .venv                              # one-time
-.\.venv\Scripts\Activate.ps1                      # activate venv (per shell)
-pip install -r requirements.txt                   # install deps
+# Backend
+cd backend
+python -m venv .venv; .\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+uvicorn main:app --reload --port 8000          # http://localhost:8000/docs
+python -m unittest discover -s tests           # all @smoke tests, run offline
+python -m unittest tests.test_pipeline.HelvetiaDriftTest   # single test class
 
-uvicorn backend.main:app --reload --port 8000     # Terminal 1: backend (http://localhost:8000)
-streamlit run frontend/app.py                     # Terminal 2: frontend (http://localhost:8501)
-
-python -m unittest discover -s tests              # run all tests
-python -m unittest tests.test_backend.BackendSmokeTest.test_health_returns_ok   # single test
+# Frontend
+cd frontend
+npm install
+npm run dev        # http://localhost:3000
+npm run build      # production build / full typecheck
+npx tsc --noEmit   # typecheck only
 ```
 
-`make install` / `make backend` / `make frontend` / `make test` work where bash is available.
-
-## Environment
-
-Copy `.env.example` to `.env` and set:
-
-- `OPENROUTER_API_KEY` — `sk-or-v1-...`
-- `OPENROUTER_MODEL` — an OpenRouter model id
-
-The key is loaded via `load_dotenv()` in `backend/llm_client.py` and read **only** by the backend; it is never exposed to the Streamlit frontend. Both vars are required at call time — `summarize_notes` raises `RuntimeError` if either is missing, surfaced as an HTTP 500 with the message as `detail`.
+Run the backend from inside `backend/` so module imports resolve (the app uses flat imports like
+`from schemas import ...`, `from pipeline.orchestrator import ...`).
 
 ## Architecture
 
-Request flow: `frontend/app.py` → `POST /analyze` → `backend/main.py` → `summarize_notes` in `backend/llm_client.py` → OpenRouter → markdown back up the chain.
+Two data planes, a four-step cascade, assembled into an `Alert` case file.
 
-- **`backend/schemas.py`** — the contract. `OutputType` and `Tone` are `Literal` types; `AnalyzeRequest`/`AnalyzeResponse` are Pydantic models. When adding output types or tones, extend the `Literal`s here first, then the prompt and the frontend `selectbox` options must be kept in sync.
-- **`backend/main.py`** — thin FastAPI layer. `/analyze` validates non-empty text and maps `RuntimeError` → `HTTPException(500)`. `/health` returns `{"status": "ok"}`.
-- **`backend/llm_client.py`** — the only place that talks to OpenRouter. `build_prompt` constructs the markdown-shaping prompt; `summarize_notes` does a single `requests.post` (temperature 0.2, 60s timeout) and returns a dict matching `AnalyzeResponse` fields. The result `dict` keys must stay aligned with `AnalyzeResponse`.
-- **`frontend/app.py`** — Streamlit UI; hardcodes `BACKEND_URL = http://localhost:8000/analyze`. `format_backend_error` unwraps the backend's JSON `detail` for display.
+Request flow: `frontend/lib/api.ts` -> FastAPI routes in `backend/main.py` -> `pipeline/orchestrator.py`
+-> steps 1-4 -> `store.py`. The orchestrator chains the steps and assembles the alert.
+
+- **`backend/schemas.py`** is the contract. Every shape (Client, BaselineProfile, Signal,
+  LiveProfile, DriftScore, Alert, Decision, AuditEvent) is a Pydantic model; the TS interfaces in
+  `frontend/lib/api.ts` mirror them (snake_case matches the JSON). Change a shape here, then update
+  both `api.ts` and any affected step. `DriftDimension` uses field aliases `from`/`to`; FastAPI
+  serializes responses by alias, so the JSON keys are `from`/`to`.
+- **Data planes (`backend/sources/`):** `public_source.py` (Layer 1, public signals) and
+  `private_source.py` (Layer 2, internal baseline). Data-plane rule, enforced by imports: the
+  public source and steps 1-2 must never import the private source. Only the drift engine (step 3)
+  and the final assembly read the baseline.
+- **Pipeline (`backend/pipeline/`):** each step is one module with a typed function and a `# TODO`,
+  runnable independently. step1 = cheap rules/dedup (~0 cost); step2 = LLM reasoning filter
+  (mid-tier deployment); step3 = deterministic drift engine + deep LLM narrative; step4 = human
+  decision (the only path that mutates risk state, always writing an append-only audit event).
+- **LLM (`backend/llm/adk_agent.py`):** the single model path. `run_agent(prompt, deployment, ...)`
+  returns text plus token usage and a USD cost from the price table in `config.py`. If Azure is not
+  configured it returns the caller's `offline_response` (an explicit, labelled demo fallback, not a
+  silent mock) with estimated tokens, so the whole pipeline runs offline. `google.adk` is imported
+  lazily inside the online branch so offline runs and tests do not require it installed.
+- **Cost meter:** step2 + step3 costs sum onto `Alert.cost`; `GET /api/cost/today` aggregates. The
+  price table lives in code so the figure is deterministic and demo-stable.
+- **Store (`backend/store.py`):** in-memory alerts + append-only audit log; reset on each
+  `POST /api/run`. Thin and swappable for a real DB later.
+
+## Key invariants
+
+- Recommend, never act: no code path changes a client's risk state except `step4_human_review`.
+- Audit everything: state changes append an `AuditEvent`; never mutate or delete them.
+- The four UX requirements live in `frontend/app/alerts/[id]/page.tsx` in order: risk delta + what
+  it implies first, then baseline-vs-current, then the source-cited timeline, then the three
+  decision actions with status pill and audit trail.
+
+## Demo data
+
+`backend/data/seed.py`: Helvetia SaaS GmbH (drifts to HIGH, reaches step 3, non-zero cost) and
+Lakeside Trading AG (immaterial signal, dies at step 1, ~$0). Each signal carries the concrete
+profile deltas it implies under `raw`; the drift engine applies those to derive the live profile,
+which is what lets the pipeline run honestly offline.
 
 ## Conventions
 
-- Keep dependencies minimal (see `requirements.txt`) — no heavy frameworks unless clearly useful.
-- Small files, clear function names, comments only for non-obvious logic.
-- Tests are smoke-level (`@smoke` style): they call the FastAPI route functions directly (`analyze_text`, `health`) rather than spinning up a server, and patch `os.environ` to test failure paths without hitting OpenRouter.
+- Keep dependencies minimal; small files, clear names, comments only for non-obvious logic.
+- Tests are `@smoke`: they call the real pipeline and route functions (not mocks) with the offline
+  LLM stub, so `unittest` passes without an Azure key or the ADK packages installed.

@@ -1,77 +1,91 @@
-This repo was created in close collaboration with github copilot and codex. :]
+# DRIFTWATCH
 
-# Hackathon Demo Template
+Event-driven KYC drift intelligence for a digital-asset bank (AMINA Bank, SwissHacks 2026).
 
-A minimal AI/data prototype starter with a Streamlit frontend and FastAPI backend.
+DRIFTWATCH treats each corporate client as a living KYC profile and measures how far reality has
+drifted from what the bank onboarded. It ingests public signals (Layer 1), compares them against
+an internal baseline (Layer 2), and emits a cited case file with a recommended action. Heavy
+reasoning is spent only where it matters, and the per-alert cost is visible in the UI.
 
-## Quick start
+This repository is a hackathon scaffold: a working vertical slice with clearly-stubbed parts so a
+team can build the two data sources and four pipeline steps independently.
 
-Use `make` to manage the development environment:
+## Stack
 
-```bash
-make install    # One-time setup: create venv and install dependencies
-make backend    # Terminal 1: start FastAPI backend
-make frontend   # Terminal 2: start Streamlit frontend
-make test       # Run smoke tests
-make venv       # Show how to manually activate the virtual environment
+- **Frontend:** Next.js (App Router, TypeScript, Tailwind)
+- **Backend:** Python, FastAPI, Pydantic
+- **LLM:** Google ADK driving Azure OpenAI through LiteLLM
+
+## Architecture
+
+Two data planes and a four-step cascade:
+
+```
+Layer 1 (public)        Layer 2 (private/synthetic)
+public_source.py        private_source.py  (baseline golden record)
+        |                        |
+        v                        |
+ step1 basic filter   (cheap, ~0 cost; drops noise)
+        v                        |
+ step2 LLM filter     (mid-tier Azure; keeps material signals)
+        v                        |
+ step3 analysis  <---------------+  (drift engine reads baseline; deep Azure narrative)
+        v
+ step4 human review   (analyst decides; audit log; the only path that changes risk state)
 ```
 
-## Manual run
+The cascade is the cost story: a "no change" client (Lakeside) dies at step 1 with near-zero
+cost, while a drifting client (Helvetia) reaches step 3 and becomes a re-KYC case file.
 
-If you prefer to set up manually:
+## Run it
 
-1. Activate the virtual environment:
+Two terminals. The app runs offline out of the box; without an Azure key the LLM steps use a
+clearly-labelled stub so the demo still works.
 
-```bash
-. .venv/bin/activate
-```
+### Backend (Terminal 1)
 
-2. Install dependencies:
-
-```bash
+```powershell
+cd backend
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1            # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
+uvicorn main:app --reload --port 8000   # http://localhost:8000/docs
 ```
 
-3. Start the backend (Terminal 1):
+### Frontend (Terminal 2)
 
-```bash
-uvicorn backend.main:app --reload --port 8000
+```powershell
+cd frontend
+npm install
+npm run dev                             # http://localhost:3000
 ```
 
-4. Start the frontend (Terminal 2):
+### Environment (optional, for real LLM calls)
 
-```bash
-streamlit run frontend/app.py
+Copy `.env.example` to `.env` (backend reads it) and set the Azure variables. Without them the
+pipeline runs with the offline stub.
+
+## Demo script
+
+Open `http://localhost:3000`, click **Run pipeline**. Helvetia SaaS GmbH climbs from LOW to a
+HIGH-risk re-KYC alert (analysis depth 3, visible cost) while Lakeside Trading AG stays a "baseline
+confirmed" row (step 1, ~$0). Open Helvetia: read the risk band and "what this implies" first,
+then the baseline-vs-current panel (B2B SaaS to Crypto OTC desk, owners 2 to 3, volume low to
+high), then the source-cited timeline. Click **Approve Re-KYC** and watch the audit trail update.
+
+## Tests
+
+```powershell
+cd backend
+python -m unittest discover -s tests    # @smoke, runs offline
 ```
 
-## Environment
+## Where to build next
 
-Copy `.env.example` to `.env` and set your OpenRouter credentials:
+Each part is independently runnable with a typed contract; replace a stub without touching the
+rest:
 
-```bash
-OPENROUTER_API_KEY=sk-or-v1-...
-OPENROUTER_MODEL=your-openrouter-model
-```
-
-The API key is read only by the FastAPI backend and is never sent to the Streamlit frontend.
-
-## Try It
-
-Open `http://localhost:8501` in your browser. Paste messy notes, choose a tone, and click "Generate Summary".
-
-Example input:
-
-```text
-Met Sarah from Acme. They need onboarding docs by Friday. Pricing is unclear.
-Ask Alex about enterprise plan. Sarah cares about security review and timeline.
-Next call maybe Tuesday afternoon.
-```
-
-The backend calls OpenRouter once and returns a markdown result with a summary and open questions.
-
-## File structure
-
-- `backend/schemas.py` — Pydantic request/response models
-- `backend/main.py` — FastAPI app with `/analyze`
-- `backend/llm_client.py` — OpenRouter chat-completions helper
-- `frontend/app.py` — Streamlit app sending text to the backend
+- `backend/sources/public_source.py` — wire real connectors (OpenSanctions, ZEFIX, GDELT, Wayback).
+- `backend/sources/private_source.py` — back the baseline with a real internal store.
+- `backend/pipeline/step1..step4` — each step has one typed function and a `# TODO`.
+- `backend/data/seed.py` — add more clients and signals.
