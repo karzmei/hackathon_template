@@ -112,6 +112,11 @@ dashes; use semicolons, commas, or shorter sentences.
   how it was verified.
 - Drive the PR checks to green yourself; re-sync with `main` first if it has moved. Do not use
   `--admin` or force pushes to bypass failing checks; fix the cause.
+- Pull from `origin/main` regularly while you work, not just at commit time, so your branch does not
+  drift far from upstream; resolve any conflicts as they surface rather than letting them pile up.
+- Resolve merge conflicts yourself by default; read both sides, keep the intent of each, and verify
+  with tests before continuing. Only stop to ask when the correct resolution is genuinely ambiguous
+  or would discard someone's work.
 - Merge with squash once checks pass, unless the user asks otherwise. Confirm before any action that
   is hard to reverse or outward facing.
 

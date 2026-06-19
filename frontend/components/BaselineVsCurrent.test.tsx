@@ -1,24 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { BaselineVsCurrent } from "./BaselineVsCurrent";
-import type { Profile } from "@/lib/api";
-
-function profile(overrides: Partial<Profile> = {}): Profile {
-  return {
-    client_id: "helvetia",
-    business_model: "B2B SaaS",
-    expected_activity: "subscription revenue",
-    expected_volume_band: "low",
-    owners: [
-      { name: "Anna", pct: 60, screened: true },
-      { name: "Ben", pct: 40, screened: true },
-    ],
-    legal_form: "GmbH",
-    domain: "helvetia.example",
-    risk_rating: "low",
-    ...overrides,
-  };
-}
+import { makeProfile as profile } from "@/test/fixtures";
 
 describe("BaselineVsCurrent", () => {
   it("renders both the baseline and current value for a changed dimension", () => {

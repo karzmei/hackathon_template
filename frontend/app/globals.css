@@ -1,8 +1,135 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "../styles/shadcn-tailwind.css";
 
-body {
-  background-color: theme("colors.cream");
-  color: theme("colors.ink");
+/* Dark mode is CLASS-gated, not media-query gated: `dark:` utilities bind to the
+   `.dark` class so they flip together with the token block below. The app is
+   light-only today (no `.dark` is ever set); add `class="dark"` to <html> later
+   to switch utilities and tokens together. */
+@custom-variant dark (&:is(.dark *));
+
+@layer base {
+  :root {
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.145 0 0);
+    --primary: oklch(0.205 0 0);
+    --primary-foreground: oklch(0.985 0 0);
+    --secondary: oklch(0.97 0 0);
+    --secondary-foreground: oklch(0.205 0 0);
+    --muted: oklch(0.97 0 0);
+    --muted-foreground: oklch(0.556 0 0);
+    --accent: oklch(0.97 0 0);
+    --accent-foreground: oklch(0.205 0 0);
+    --destructive: oklch(0.577 0.245 27.325);
+    --border: oklch(0.922 0 0);
+    --input: oklch(0.922 0 0);
+    --ring: oklch(0.708 0 0);
+    --radius: 0.625rem;
+
+    /* Semantic status palette — drives the KYC risk bands (low -> success,
+       medium -> warning, high -> danger) and the source-cited timeline accents. */
+    --color-background-info: #e0ebff;
+    --color-border-info: #4f7ce6;
+    --color-text-info: #1e3a8a;
+    --color-background-success: #eaf3de;
+    --color-border-success: #97c459;
+    --color-text-success: #173404;
+    --color-background-warning: #faeeda;
+    --color-border-warning: #ef9f27;
+    --color-text-warning: #412402;
+    --color-background-danger: #fcebeb;
+    --color-border-danger: #e24b4a;
+    --color-text-danger: #501313;
+  }
+
+  /* Single source of truth for dark-mode token values; activates only under an
+     ancestor with `class="dark"` (currently never set — the app is light-only). */
+  .dark {
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.205 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.205 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.922 0 0);
+    --primary-foreground: oklch(0.205 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.556 0 0);
+  }
+
+  * {
+    box-sizing: border-box;
+    border-color: var(--border);
+  }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+  }
+  html {
+    @apply font-sans;
+    scroll-behavior: smooth;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+  a {
+    @apply text-inherit no-underline;
+  }
+}
+
+/* Expose the neutral + status tokens as Tailwind v4 utility colours
+   (bg-*, text-*, border-*). The status tones map directly onto risk bands. */
+@theme inline {
+  /* Geist ships its CSS vars as --font-geist-*; point Tailwind's font-sans /
+     font-mono utilities at them. font-serif reads --font-serif (set by next/font). */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-bg-info: var(--color-background-info);
+  --color-bg-success: var(--color-background-success);
+  --color-bg-warning: var(--color-background-warning);
+  --color-bg-danger: var(--color-background-danger);
+  --color-fg-info: var(--color-text-info);
+  --color-fg-success: var(--color-text-success);
+  --color-fg-warning: var(--color-text-warning);
+  --color-fg-danger: var(--color-text-danger);
+  --color-bd-info: var(--color-border-info);
+  --color-bd-success: var(--color-border-success);
+  --color-bd-warning: var(--color-border-warning);
+  --color-bd-danger: var(--color-border-danger);
 }

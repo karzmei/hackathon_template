@@ -11,12 +11,13 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     include: ["**/*.test.{ts,tsx}"],
+    exclude: ["e2e/**", "node_modules/**", ".next/**"],
     setupFiles: ["./test/setup.ts"],
     pool: "threads",
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],
-      exclude: [".next/**", "test/**", "**/*.config.*", "**/*.d.ts"],
+      exclude: [".next/**", "test/**", "e2e/**", "**/*.config.*", "**/*.d.ts"],
     },
   },
   resolve: {

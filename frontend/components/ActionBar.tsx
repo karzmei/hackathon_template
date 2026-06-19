@@ -2,11 +2,16 @@
 
 import { useState } from "react";
 import { api, RecommendedAction } from "@/lib/api";
+import { Button } from "@/components/ui/button";
 
-const ACTIONS: { label: string; action: RecommendedAction; tone: string }[] = [
-  { label: "Approve Re-KYC", action: "re_kyc", tone: "bg-navy text-cream" },
-  { label: "Escalate to MLRO", action: "escalate", tone: "bg-gold text-navy" },
-  { label: "Dismiss as false positive", action: "no_change", tone: "bg-white text-ink border border-slate-300" },
+const ACTIONS: {
+  label: string;
+  action: RecommendedAction;
+  variant: "default" | "brand" | "outline";
+}[] = [
+  { label: "Approve Re-KYC", action: "re_kyc", variant: "default" },
+  { label: "Escalate to MLRO", action: "escalate", variant: "brand" },
+  { label: "Dismiss as false positive", action: "no_change", variant: "outline" },
 ];
 
 // Human-in-the-loop: the AI proposes, the human disposes. Three actions only.
@@ -36,16 +41,17 @@ export function ActionBar({
   return (
     <section className="flex flex-wrap items-center gap-3">
       {ACTIONS.map((a) => (
-        <button
+        <Button
           key={a.action}
+          variant={a.variant}
+          size="lg"
           onClick={() => decide(a.action)}
           disabled={busy !== null}
-          className={`rounded px-4 py-2 text-sm font-medium disabled:opacity-50 ${a.tone}`}
         >
           {busy === a.action ? "Saving..." : a.label}
-        </button>
+        </Button>
       ))}
-      {error && <span className="text-sm text-red-600">{error}</span>}
+      {error && <span className="text-sm text-destructive">{error}</span>}
     </section>
   );
 }

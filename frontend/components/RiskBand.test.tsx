@@ -1,19 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { RiskBand } from "./RiskBand";
-import type { DriftScore } from "@/lib/api";
-
-function drift(overrides: Partial<DriftScore> = {}): DriftScore {
-  return {
-    client_id: "helvetia",
-    per_dimension: [],
-    aggregate: 0.8,
-    band: "high",
-    confidence: 0.92,
-    invalidated_assumptions: ["business model", "ownership"],
-    ...overrides,
-  };
-}
+import { makeDriftScore as drift } from "@/test/fixtures";
 
 describe("RiskBand", () => {
   it("shows the risk band, confidence percent, and implies text", () => {
@@ -24,7 +12,7 @@ describe("RiskBand", () => {
         implies="Re-KYC recommended; the onboarded profile no longer holds."
       />,
     );
-    expect(screen.getByText("HIGH")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "HIGH" })).toBeInTheDocument();
     expect(screen.getByText(/confidence 92%/)).toBeInTheDocument();
     expect(screen.getByText(/Re-KYC recommended/)).toBeInTheDocument();
   });

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { Alert, api } from "@/lib/api";
 import { RiskBand } from "@/components/RiskBand";
 import { BaselineVsCurrent } from "@/components/BaselineVsCurrent";
@@ -10,6 +11,7 @@ import { SignalTimeline } from "@/components/SignalTimeline";
 import { CostMeter } from "@/components/CostMeter";
 import { ActionBar } from "@/components/ActionBar";
 import { StatusPill } from "@/components/StatusPill";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function AlertDetailPage() {
   const params = useParams<{ id: string }>();
@@ -30,14 +32,18 @@ export default function AlertDetailPage() {
     refresh();
   }, [refresh]);
 
-  if (error) return <p className="text-sm text-red-600">{error}</p>;
-  if (!alert) return <p className="text-slate-500">Loading...</p>;
+  if (error) return <p className="text-sm text-destructive">{error}</p>;
+  if (!alert) return <p className="text-muted-foreground">Loading...</p>;
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <Link href="/" className="text-sm text-navy underline">
-          {"← back to queue"}
+      <div className="flex items-center justify-between gap-4">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="size-4" aria-hidden />
+          back to queue
         </Link>
         <div className="flex items-center gap-3">
           <StatusPill status={alert.status} />
@@ -46,15 +52,23 @@ export default function AlertDetailPage() {
       </div>
 
       <div>
-        <h1 className="font-serif text-2xl text-navy">{alert.client_name}</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="font-serif text-2xl font-semibold tracking-tight">
+          {alert.client_name}
+        </h1>
+        <p className="text-sm text-muted-foreground">
           Recommended action:{" "}
-          <span className="font-semibold">{alert.recommended_action}</span>
+          <span className="font-semibold text-foreground">
+            {alert.recommended_action}
+          </span>
         </p>
       </div>
 
       {/* 1. Most important first: risk delta + what it implies */}
-      <RiskBand riskBand={alert.risk_band} drift={alert.drift_score} implies={alert.implies} />
+      <RiskBand
+        riskBand={alert.risk_band}
+        drift={alert.drift_score}
+        implies={alert.implies}
+      />
 
       {/* 3. Baseline vs current */}
       <BaselineVsCurrent baseline={alert.baseline} current={alert.current} />
@@ -65,17 +79,21 @@ export default function AlertDetailPage() {
       {/* 4. Human-in-the-loop */}
       <ActionBar alertId={alert.id} onDecided={refresh} />
 
-      <section className="rounded-lg border border-slate-200 bg-white p-4">
-        <h3 className="font-serif text-lg text-navy mb-2">Audit trail</h3>
-        <ul className="space-y-1 text-xs text-slate-600">
-          {alert.audit.map((e, i) => (
-            <li key={i}>
-              <span className="font-mono">{e.at}</span> — {e.type} by{" "}
-              <span className="font-medium">{e.actor}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-serif text-base">Audit trail</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ul className="space-y-1 text-xs text-muted-foreground">
+            {alert.audit.map((e, i) => (
+              <li key={i}>
+                <span className="font-mono">{e.at}</span> · {e.type} by{" "}
+                <span className="font-medium text-foreground">{e.actor}</span>
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+      </Card>
     </div>
   );
 }

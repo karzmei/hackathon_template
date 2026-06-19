@@ -1,0 +1,194 @@
+{
+  "analysis_depth": 3,
+  "audit": [
+    {
+      "actor": "system",
+      "at": "<normalized>",
+      "entity_id": "alert-helvetia",
+      "payload": {
+        "analysis_depth": 3,
+        "band": "high"
+      },
+      "type": "created"
+    }
+  ],
+  "baseline": {
+    "business_model": "B2B SaaS",
+    "client_id": "helvetia",
+    "domain": "helvetia-saas.ch",
+    "expected_activity": "Monthly subscription revenue from Swiss SME clients",
+    "expected_volume_band": "low",
+    "legal_form": "GmbH",
+    "owners": [
+      {
+        "name": "Anna Meier",
+        "pct": 60.0,
+        "screened": true
+      },
+      {
+        "name": "Thomas Brun",
+        "pct": 40.0,
+        "screened": true
+      }
+    ],
+    "risk_rating": "LOW"
+  },
+  "client_id": "helvetia",
+  "client_name": "Helvetia SaaS GmbH",
+  "cost": {
+    "tokens_in": 395,
+    "tokens_out": 199,
+    "usd": 0.001316
+  },
+  "created_at": "<normalized>",
+  "current": {
+    "business_model": "Crypto OTC desk",
+    "client_id": "helvetia",
+    "domain": "helvetia-otc.io",
+    "expected_activity": "Monthly subscription revenue from Swiss SME clients",
+    "expected_volume_band": "high",
+    "legal_form": "AG",
+    "owners": [
+      {
+        "name": "Anna Meier",
+        "pct": 60.0,
+        "screened": true
+      },
+      {
+        "name": "Thomas Brun",
+        "pct": 40.0,
+        "screened": true
+      },
+      {
+        "name": "Nordwind Holdings Ltd",
+        "pct": 40.0,
+        "screened": false
+      }
+    ],
+    "risk_rating": "HIGH"
+  },
+  "drift_score": {
+    "aggregate": 1.0,
+    "band": "high",
+    "client_id": "helvetia",
+    "confidence": 0.843,
+    "invalidated_assumptions": [
+      "business model: B2B SaaS -> Crypto OTC desk",
+      "ownership: 2 owners -> 3 owners (1 unscreened)",
+      "legal form: GmbH -> AG",
+      "expected volume: low -> high",
+      "risk rating: LOW -> HIGH",
+      "domain: helvetia-saas.ch -> helvetia-otc.io"
+    ],
+    "per_dimension": [
+      {
+        "delta": 1.0,
+        "dimension": "business_model",
+        "from": "B2B SaaS",
+        "to": "Crypto OTC desk",
+        "weight": 0.25
+      },
+      {
+        "delta": 1.0,
+        "dimension": "ownership",
+        "from": "2 owners",
+        "to": "3 owners (1 unscreened)",
+        "weight": 0.2
+      },
+      {
+        "delta": 1.0,
+        "dimension": "legal_form",
+        "from": "GmbH",
+        "to": "AG",
+        "weight": 0.15
+      },
+      {
+        "delta": 1.0,
+        "dimension": "expected_volume",
+        "from": "low",
+        "to": "high",
+        "weight": 0.15
+      },
+      {
+        "delta": 1.0,
+        "dimension": "risk_rating",
+        "from": "LOW",
+        "to": "HIGH",
+        "weight": 0.15
+      },
+      {
+        "delta": 1.0,
+        "dimension": "domain",
+        "from": "helvetia-saas.ch",
+        "to": "helvetia-otc.io",
+        "weight": 0.1
+      }
+    ]
+  },
+  "id": "alert-helvetia",
+  "implies": "Multiple public signals jointly moved the profile: business model: B2B SaaS -> Crypto OTC desk; ownership: 2 owners -> 3 owners (1 unscreened); legal form: GmbH -> AG; expected volume: low -> high; risk rating: LOW -> HIGH; domain: helvetia-saas.ch -> helvetia-otc.io. These invalidate the onboarded assumptions and warrant re-kyc. [offline demo narrative]",
+  "recommended_action": "re_kyc",
+  "risk_band": "LOW -> HIGH",
+  "signals": [
+    {
+      "client_id": "helvetia",
+      "confidence": 0.87,
+      "evidence_url": "https://web.archive.org/web/2026/helvetia-otc.io",
+      "id": "hv-1",
+      "kind": "domain_change",
+      "observed_at": "2026-05-04",
+      "raw": {
+        "business_model": "Crypto OTC desk",
+        "domain": "helvetia-otc.io"
+      },
+      "source": "wayback",
+      "summary": "Website overhauled from a SaaS product site to a crypto OTC trading desk."
+    },
+    {
+      "client_id": "helvetia",
+      "confidence": 0.95,
+      "evidence_url": "https://zefix.ch/en/search/entity/list/firm/helvetia",
+      "id": "hv-2",
+      "kind": "ownership_change",
+      "observed_at": "2026-05-19",
+      "raw": {
+        "add_owner": {
+          "name": "Nordwind Holdings Ltd",
+          "pct": 40,
+          "screened": false
+        },
+        "legal_form": "AG"
+      },
+      "source": "zefix",
+      "summary": "ZEFIX filing: legal form changed to AG and a new 40% shareholder added."
+    },
+    {
+      "client_id": "helvetia",
+      "confidence": 0.75,
+      "evidence_url": "https://kyt.example/cluster/helvetia",
+      "id": "hv-3",
+      "kind": "onchain_exposure",
+      "observed_at": "2026-05-28",
+      "raw": {
+        "risk_rating": "HIGH"
+      },
+      "source": "onchain_kyt",
+      "summary": "Counterparty wallet shows exposure to a high-risk VASP; Travel Rule gap."
+    },
+    {
+      "client_id": "helvetia",
+      "confidence": 0.8,
+      "evidence_url": null,
+      "id": "hv-4",
+      "kind": "dormancy_break",
+      "observed_at": "2026-06-09",
+      "raw": {
+        "expected_volume_band": "high"
+      },
+      "source": "internal_tx",
+      "summary": "Dormant account resumes activity with high-volume crypto-linked inflows."
+    }
+  ],
+  "status": "needs_review",
+  "top_change": "business model: B2B SaaS -> Crypto OTC desk"
+}
