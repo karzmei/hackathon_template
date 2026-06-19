@@ -1,0 +1,133 @@
+// Typed client for the DRIFTWATCH backend.
+// The interfaces mirror backend/schemas.py (snake_case matches the JSON on the wire).
+
+const BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+
+export type RecommendedAction = "no_change" | "re_kyc" | "edd" | "escalate";
+export type AlertStatus =
+  | "new"
+  | "needs_review"
+  | "escalated"
+  | "dismissed"
+  | "actioned";
+export type RiskBandLevel = "low" | "medium" | "high";
+
+export interface Cost {
+  tokens_in: number;
+  tokens_out: number;
+  usd: number;
+}
+
+export interface Owner {
+  name: string;
+  pct: number;
+  screened: boolean;
+}
+
+export interface Profile {
+  client_id: string;
+  business_model: string;
+  expected_activity: string;
+  expected_volume_band: string;
+  owners: Owner[];
+  legal_form: string;
+  domain: string;
+  risk_rating: string;
+}
+
+export interface Signal {
+  id: string;
+  client_id: string;
+  source: string;
+  observed_at: string;
+  kind: string;
+  summary: string;
+  evidence_url: string | null;
+  confidence: number;
+  raw: Record<string, unknown>;
+}
+
+export interface DriftDimension {
+  dimension: string;
+  from: string;
+  to: string;
+  delta: number;
+  weight: number;
+}
+
+export interface DriftScore {
+  client_id: string;
+  per_dimension: DriftDimension[];
+  aggregate: number;
+  band: RiskBandLevel;
+  confidence: number;
+  invalidated_assumptions: string[];
+}
+
+export interface AuditEvent {
+  entity_id: string;
+  type: string;
+  actor: string;
+  payload: Record<string, unknown>;
+  at: string;
+}
+
+export interface AlertRow {
+  id: string;
+  client_name: string;
+  risk_band: string;
+  top_change: string;
+  status: AlertStatus;
+  recommended_action: RecommendedAction;
+  analysis_depth: number;
+  cost: Cost;
+  created_at: string;
+}
+
+export interface Alert extends AlertRow {
+  client_id: string;
+  drift_score: DriftScore;
+  implies: string;
+  signals: Signal[];
+  baseline: Profile;
+  current: Profile;
+  audit: AuditEvent[];
+}
+
+export interface CostToday {
+  tokens_in: number;
+  tokens_out: number;
+  usd: number;
+  alerts: number;
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    headers: { "Content-Type": "application/json" },
+    cache: "no-store",
+    ...init,
+  });
+  if (!res.ok) {
+    let detail = res.statusText;
+    try {
+      detail = (await res.json()).detail ?? detail;
+    } catch {
+      // ignore non-JSON error bodies
+    }
+    throw new Error(`API ${res.status}: ${detail}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+export const api = {
+  listAlerts: () => request<AlertRow[]>("/api/alerts"),
+  runPipeline: () => request<{ alerts: AlertRow[] }>("/api/run", { method: "POST" }),
+  getAlert: (id: string) => request<Alert>(`/api/alerts/${id}`),
+  decide: (id: string, action: RecommendedAction, reason?: string) =>
+    request<Alert>(`/api/alerts/${id}/decision`, {
+      method: "POST",
+      body: JSON.stringify({ action, reason, actor: "analyst" }),
+    }),
+  costToday: () => request<CostToday>("/api/cost/today"),
+};
