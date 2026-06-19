@@ -8,10 +8,8 @@ lists of `Signal`.
 
 from __future__ import annotations
 
+from drift_config import MATERIALITY_THRESHOLD
 from schemas import Signal
-
-# Signals below this confidence are treated as immaterial noise and dropped.
-MATERIALITY_THRESHOLD = 0.35
 
 
 def basic_filter(signals: list[Signal]) -> list[Signal]:
