@@ -16,4 +16,6 @@ coverage/
 
 # Misc
 .DS_Store
-.claude/
+.claude/*
+# Share project agent skills with the team; keep personal Claude config local
+!.claude/skills/
