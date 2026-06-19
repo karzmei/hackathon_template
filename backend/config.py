@@ -21,8 +21,8 @@ DEPLOYMENT_REASONING = os.environ.get("AZURE_OPENAI_DEPLOYMENT_REASONING", "gpt-
 DEPLOYMENT_DEEP = os.environ.get("AZURE_OPENAI_DEPLOYMENT_DEEP", "gpt-4o")
 
 # Google Gemini model names (passed to LiteLLM as gemini/<model>).
-GEMINI_REASONING = "gemini/gemini-2.0-flash-lite"
-GEMINI_DEEP = "gemini/gemini-2.0-flash"
+GEMINI_REASONING = "gemini/gemini-2.5-flash"
+GEMINI_DEEP = "gemini/gemini-2.5-flash"
 
 # Frontend origin allowed through CORS.
 FRONTEND_ORIGIN = os.environ.get("FRONTEND_ORIGIN", "http://localhost:3000")
@@ -34,8 +34,8 @@ GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
 PRICING: dict[str, tuple[float, float]] = {
     DEPLOYMENT_REASONING: (0.00015, 0.00060),   # gpt-4o-mini
     DEPLOYMENT_DEEP: (0.0025, 0.0100),           # gpt-4o
-    GEMINI_REASONING: (0.000075, 0.0003),        # gemini-2.0-flash-lite
-    GEMINI_DEEP: (0.00015, 0.0006),              # gemini-2.0-flash
+    GEMINI_REASONING: (0.00015, 0.0035),          # gemini-2.5-flash
+    GEMINI_DEEP: (0.00015, 0.0035),              # gemini-2.5-flash
 }
 _DEFAULT_PRICE = (0.0005, 0.0015)
 
