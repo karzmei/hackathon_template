@@ -89,6 +89,91 @@
   a {
     @apply text-inherit no-underline;
   }
+
+  /* Custom scrollbar to match the cockpit chrome. */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: oklch(0.88 0 0);
+    border-radius: 6px;
+    border: 3px solid #fff;
+  }
+}
+
+/* Cockpit motion: unread pulse, row entrance, drift-bar fill. */
+@keyframes dwpulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+@keyframes dwin {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes dwbar {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.dw-pulse {
+  animation: dwpulse 1.4s infinite;
+}
+.dw-in {
+  animation: dwin 0.25s ease both;
+}
+.dw-bar {
+  transform-origin: left;
+  animation: dwbar 0.5s ease both;
+}
+
+/* Hover lifts and tints, replacing the prototype's inline style-hover. */
+.dw-card-hover {
+  transition: transform 0.12s, box-shadow 0.12s, border-color 0.12s;
+}
+.dw-card-hover:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.09);
+  border-color: oklch(0.205 0 0);
+}
+.dw-row-hover {
+  transition: background 0.1s;
+}
+.dw-row-hover:hover {
+  background: oklch(0.97 0 0) !important;
+}
+.dw-fade-hover {
+  transition: opacity 0.12s;
+}
+.dw-fade-hover:hover {
+  opacity: 0.9;
+}
+.dw-dark-hover:hover {
+  background: oklch(0.32 0 0) !important;
+}
+.dw-amber-hover:hover {
+  background: #5c3406 !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dw-pulse,
+  .dw-in,
+  .dw-bar {
+    animation: none;
+  }
 }
 
 /* Expose the neutral tokens as Tailwind v4 utility colours (bg-*, text-*,

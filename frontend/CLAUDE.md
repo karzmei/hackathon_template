@@ -8,23 +8,30 @@ sentences.
 
 ## What this is
 
-The DRIFTWATCH cockpit: a Next.js (App Router, TypeScript, Tailwind v4) single-page UI. An analyst
-runs the pipeline, scans a queue of drifting clients on the left, and reviews a cited case file
-with three decision actions on the right.
+The DRIFTWATCH cockpit: a Next.js (App Router, TypeScript, Tailwind v4) single-page UI. It is a
+three-role KYC drift cockpit. A seat picker chooses a role (Relationship Manager or Account Manager
+on the first line, Compliance on the second line); each role scans a ranked book of drifting clients
+on the left and works a cited case file on the right. Cases flow up (escalate), sideways (RM <-> AM
+handover) and back down (Compliance instruction), and the shared case state syncs across browser
+windows so the handoff can be run live. The cockpit is frontend-only; it does not call the backend.
 
 ## Layout
 
 - `app/`: `layout.tsx` loads fonts (Geist, Source Serif 4) and `globals.css`; `page.tsx` is the
-  cockpit and owns all state (selected alert, queue rows, today's cost), runs the pipeline, and
-  passes data down to components.
-- `components/`: presentational, props-driven, `"use client"` components. `CockpitHeader` (brand,
-  cost/signals pill, Run button); `QueueRail` (the left list, each row with a `Sparkline`);
-  `DetailPane` (the case file, orchestrates `DriftBand`, `DimensionDrift`, `SignalTimeline`,
-  `ActionBar`, `CostMeter`, `StatusPill`). `components/ui/` holds the shadcn/base-nova primitives
-  (`button`, `card`, `badge`, `severity-badge`).
-- `lib/`: `api.ts` (typed backend client), `data.ts` (mock-first data layer; UI calls this),
-  `mock.ts` (typed offline dataset), `cockpit.ts` (pure view-model helpers), `risk.ts` (risk
-  styling helpers), `utils.ts` (`cn`).
+  cockpit. It calls the `useCockpit()` hook for state, builds the view model, renders the
+  `LoginScreen` until a role is chosen, then the app shell, and routes detail-pane button keys to
+  the matching hook action.
+- `components/cockpit/`: presentational, props-driven, `"use client"` components. `LoginScreen`
+  (seat picker); `AppHeader` (brand, Compliance inbox pill, role badge, switch role); `Sidebar`
+  (role nav + lines-of-defence legend); `CaseList` (the ranked middle rail); `CaseDetail` (the case
+  file: risk delta, drift signals, what-changed timeline, key facts, recommendation, instruction
+  flow, decision actions, case conversation, audit trail). `components/ui/` holds the shadcn/base-nova
+  primitives (`button`, `severity-badge`).
+- `lib/`: `cockpit-types.ts` (model types + the `TONES`/`ROLES` maps), `cockpit-seed.ts` (the seven
+  seeded cases), `cockpit-view.ts` (pure view-model helpers: `buildView`, `statusPill`, `recVM`,
+  `rowVM`, `navItem`), `use-cockpit.ts` (the stateful hook: localStorage persistence, cross-window
+  sync, all actions), `api.ts` (typed backend client, the `schemas.py` contract; not used by the
+  current cockpit but kept as the cross-language contract), `utils.ts` (`cn`).
 - `e2e/`: Playwright `@smoke` specs. `test/setup.ts` is the Vitest setup (RTL matchers, cleanup).
 
 ## Commands (Windows / PowerShell)
@@ -36,40 +43,45 @@ npm run dev            # http://localhost:3000
 npm run build          # production build / full typecheck
 npx tsc --noEmit       # typecheck only
 npm test               # Vitest unit + component tests (vitest run)
-npm run test:e2e       # Playwright e2e (auto-boots dev server with mock data)
+npm run test:e2e       # Playwright e2e (auto-boots dev server; seeds localStorage)
 npm run test:e2e:smoke # Playwright, @smoke only
 ```
 
 ## Architecture (cockpit)
 
-Single page, not a route per alert (the old `app/alerts/[id]/` route was removed). `page.tsx` holds
-state, passes data down via props, and receives changes back through callbacks. `DetailPane`
-renders the four UX requirements in order: risk delta and what it implies first, then
-baseline-vs-current (`DimensionDrift`), then the source-cited timeline (`SignalTimeline`), then the
-three decision actions with status pill and audit trail (`ActionBar`). Presentation logic lives in
-pure functions in `cockpit.ts` so components stay declarative and testable.
+Single page. `page.tsx` calls `useCockpit()` (the only stateful piece), derives the view model with
+`buildView(...)`, and passes plain data plus callbacks down to presentational components. `CaseDetail`
+renders the UX sections in order: risk delta and what it implies first, then the drift signals and
+the source-cited "what changed" timeline, then key facts and the recommendation, then the decision
+actions with the status pill and the append-only audit trail. All presentation logic is pure
+functions in `cockpit-view.ts`, so components stay declarative and the logic is unit-testable
+without React. Detail-pane buttons carry a string `key`; `page.tsx` maps each key to a hook action,
+which keeps the view model free of handlers.
 
-## Data layer (mock-first)
+## Data layer (localStorage, frontend-only)
 
-The UI calls `data.*`, never `api.*` directly. `data.ts` tries the real backend and falls back to
-typed mocks from `mock.ts` on any error, or whenever `NEXT_PUBLIC_USE_MOCK=1` (set by the Playwright
-config). It keeps an in-session mutable store so offline decisions persist for the page lifetime,
-mirroring backend `store.py` behavior. This is what lets the demo run with no backend or LLM key.
+State lives entirely in the browser. `use-cockpit.ts` seeds the seven cases from `cockpit-seed.ts`
+into `localStorage` (key `dw_p1_cases_v2`) on first load and persists every change there; the chosen
+role lives in `sessionStorage` (key `dw_p1_role`). A 1100ms poll plus the `storage` event keep two
+windows in sync, which is what makes the live first-line/second-line handoff demo work. The only
+path that mutates a case is a user action (escalate, handover, decide, confirm, send message), each
+appending an audit entry; nothing is ever deleted from the audit trail.
 
 ## Contract (api.ts <-> schemas.py)
 
-Types in `lib/api.ts` mirror `backend/schemas.py`; the JSON is snake_case, and `DriftDimension`
-uses the `from`/`to` aliases. Change a backend shape, then mirror it here and update any affected
-component. Presentation-only metadata (`clientMeta`: jurisdiction, LEI, onboarded date, sparkline,
-trend) is frontend-only and intentionally not part of the backend contract.
+`lib/api.ts` mirrors `backend/schemas.py` (snake_case JSON; `DriftDimension` uses the `from`/`to`
+aliases). The current cockpit does not call it, but it is kept as the documented cross-language
+contract: change a backend shape, then mirror it here.
 
 ## Styling
 
 Tailwind v4 via `@tailwindcss/postcss`. Design tokens are oklch CSS custom properties in
 `app/globals.css`, surfaced as utilities through `@theme`, with a semantic status palette
-(success/warning/danger/info). Dark mode is class-gated (`.dark`) and currently light-only. Use the
-shadcn/base-nova primitives in `components/ui/`; compose class names with `cn()` from `lib/utils.ts`;
-use inline `style` only for dynamic color/width derived from the helpers.
+(success/warning/danger/info), reused by the `TONES` map in `cockpit-types.ts`. Dark mode is
+class-gated (`.dark`) and currently light-only. The cockpit is pixel-tuned from a design prototype,
+so components lean on inline `style` for dynamic and branded colour/spacing; the cockpit motion
+(`dw-pulse`, `dw-in`, `dw-bar`) and hover helpers live in `app/globals.css`. Compose class names
+with `cn()` from `lib/utils.ts`.
 
 ## Conventions
 

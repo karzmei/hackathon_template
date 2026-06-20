@@ -1,8 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// End-to-end config. The cockpit runs on the mock-first data layer, so e2e boots only
-// the Next dev server with NEXT_PUBLIC_USE_MOCK=1; the demo dataset is deterministic
-// and no backend or LLM key is required.
+// End-to-end config. The cockpit is frontend-only: it seeds a deterministic case book
+// into localStorage on first load, so e2e boots only the Next dev server and needs no
+// backend or LLM key. Each test gets a fresh browser context, hence a fresh seed.
 const isCI = !!process.env.CI;
 
 export default defineConfig({
@@ -26,6 +26,5 @@ export default defineConfig({
     url: "http://localhost:3000",
     timeout: 120_000,
     reuseExistingServer: !isCI,
-    env: { NEXT_PUBLIC_USE_MOCK: "1" },
   },
 });

@@ -102,12 +102,23 @@ export interface CostToday {
   alerts: number;
 }
 
+// Bound every request so a missing or slow backend fails fast and the data layer
+// can fall back to mocks, instead of hanging on a dead localhost connection.
+const REQUEST_TIMEOUT_MS = 700;
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    headers: { "Content-Type": "application/json" },
-    cache: "no-store",
-    ...init,
-  });
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}${path}`, {
+      cache: "no-store",
+      signal: ctrl.signal,
+      ...init,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
   if (!res.ok) {
     let detail = res.statusText;
     try {
@@ -120,13 +131,22 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+// JSON body header, set only on mutating calls. Keeping it off GETs avoids a CORS
+// preflight (a GET with this header is a non-simple request).
+const JSON_HEADERS = { "Content-Type": "application/json" };
+
 export const api = {
   listAlerts: () => request<AlertRow[]>("/api/alerts"),
-  runPipeline: () => request<{ alerts: AlertRow[] }>("/api/run", { method: "POST" }),
+  runPipeline: () =>
+    request<{ alerts: AlertRow[] }>("/api/run", {
+      method: "POST",
+      headers: JSON_HEADERS,
+    }),
   getAlert: (id: string) => request<Alert>(`/api/alerts/${id}`),
   decide: (id: string, action: RecommendedAction, reason?: string) =>
     request<Alert>(`/api/alerts/${id}/decision`, {
       method: "POST",
+      headers: JSON_HEADERS,
       body: JSON.stringify({ action, reason, actor: "analyst" }),
     }),
   costToday: () => request<CostToday>("/api/cost/today"),
