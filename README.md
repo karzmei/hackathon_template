@@ -10,6 +10,12 @@ reasoning is spent only where it matters, and the per-alert cost is visible in t
 This repository is a hackathon scaffold: a working vertical slice with clearly-stubbed parts so a
 team can build the two data sources and four pipeline steps independently.
 
+## Background
+
+The product direction comes from a customer interview with AMINA. See
+[customer_interview_summary.md](customer_interview_summary.md) for the distilled findings and our
+build decisions; it links back to the [raw interview notes](customer_interview_notes.md).
+
 ## Stack
 
 - **Frontend:** Next.js (App Router, TypeScript, Tailwind)

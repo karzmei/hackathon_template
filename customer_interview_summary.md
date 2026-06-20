@@ -1,5 +1,7 @@
 # AMINA interview: what matters for our build
 
+> Distilled from the [raw interview notes](customer_interview_notes.md).
+
 **TL;DR:** AMINA is a FINMA-licensed crypto bank (started ~2019, small book then, now
 scaling hard). Compliance is a cost center doing the legal minimum: one periodic review per
 client per year, by the book. They can't grow the book without compliance cost exploding. Our
