@@ -36,7 +36,7 @@ cd backend
 python -m venv .venv; .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 uvicorn main:app --reload --port 8000          # http://localhost:8000/docs
-python -m unittest discover -s tests           # all @smoke tests, run offline
+python -m unittest discover -s tests           # @unit + @smoke + @integration, all offline
 python -m unittest tests.test_pipeline.HelvetiaDriftTest   # single test class
 ```
 
@@ -58,13 +58,18 @@ Request flow: `frontend/lib/api.ts` -> FastAPI routes in `backend/main.py` -> `p
   both `api.ts` and any affected step. `DriftDimension` uses field aliases `from`/`to`; FastAPI
   serializes responses by alias, so the JSON keys are `from`/`to`.
 - **Data planes (`backend/sources/`):** `public_source.py` (Layer 1, public signals) and
-  `private_source.py` (Layer 2, internal baseline). Data-plane rule, enforced by imports: the
-  public source and steps 1-2 must never import the private source. Only the drift engine (step 3)
-  and the final assembly read the baseline.
+  `private_source.py` (Layer 2, internal baseline). The public plane is pluggable: each external
+  feed is a connector stub in `sources/connectors/` (gdelt, opensanctions, wayback, zefix,
+  onchain_kyt); `public_source.py` registers them in `_CONNECTORS` and concatenates their output,
+  falling back to the seed fixtures while the connectors still return nothing. Data-plane rule,
+  enforced by imports: the public source and steps 1-2 must never import the private source. Only
+  the drift engine (step 3) and the final assembly read the baseline.
 - **Pipeline (`backend/pipeline/`):** each step is one module with a typed function and a `# TODO`,
   runnable independently. step1 = cheap rules/dedup (~0 cost); step2 = LLM reasoning filter
-  (mid-tier deployment); step3 = deterministic drift engine + deep LLM narrative; step4 = human
-  decision (the only path that mutates risk state, always writing an append-only audit event).
+  (mid-tier deployment); step3 (`step3_analysis.py`) runs the deterministic `drift_engine.py` then a
+  deep LLM narrative; step4 = human decision (the only path that mutates risk state, always writing
+  an append-only audit event). Scoring weights and band thresholds are tunable in one place,
+  `backend/drift_config.py`, so a tweak there moves every alert's band without touching step code.
 - **LLM (`backend/llm/adk_agent.py`):** the single model path. `run_agent(prompt, deployment, ...)`
   returns text plus token usage and a USD cost from the price table in `config.py`. If Azure is not
   configured it returns the caller's `offline_response` (an explicit, labelled demo fallback, not a
@@ -94,5 +99,7 @@ which is what lets the pipeline run honestly offline.
 ## Conventions
 
 - Keep dependencies minimal; small files, clear names, comments only for non-obvious logic.
-- Tests are `@smoke`: they call the real pipeline and route functions (not mocks) with the offline
-  LLM stub, so `unittest` passes without an Azure key or the ADK packages installed.
+- Tests under `backend/tests/` are tagged `@unit` (pure functions: drift math, pricing, data-plane
+  rules), `@smoke` (real pipeline and route functions with the offline LLM stub), and `@integration`
+  (the full cascade through real steps, still on the offline stub). All run offline, so `unittest`
+  passes without an Azure key or the ADK packages installed.

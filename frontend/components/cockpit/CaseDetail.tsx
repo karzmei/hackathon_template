@@ -114,6 +114,11 @@ export function CaseDetail({
             </div>
           </div>
         ))}
+        {d.signalsEmpty && (
+          <div className="text-xs" style={{ color: "oklch(0.6 0 0)" }}>
+            No drift signals detected.
+          </div>
+        )}
       </div>
 
       {/* What changed (source-cited timeline) */}
@@ -134,6 +139,11 @@ export function CaseDetail({
             </div>
           </div>
         ))}
+        {d.changesEmpty && (
+          <div className="text-xs" style={{ color: "oklch(0.6 0 0)" }}>
+            No changes recorded.
+          </div>
+        )}
       </div>
 
       {/* Key facts */}
@@ -150,29 +160,54 @@ export function CaseDetail({
             {f}
           </div>
         ))}
+        {d.factsEmpty && (
+          <div className="text-xs" style={{ color: "oklch(0.6 0 0)" }}>
+            No key facts on file.
+          </div>
+        )}
       </div>
 
-      {/* Recommendation */}
+      {/* Recommendation: live for the owner who can act, greyed context otherwise */}
       {d.rec.has && (
         <div
           className="mt-6 rounded-[12px] border p-[16px_18px]"
-          style={{ borderColor: d.rec.border, background: d.rec.bg }}
+          style={
+            d.rec.mode === "context"
+              ? { borderColor: "oklch(0.9 0 0)", background: "oklch(0.975 0 0)" }
+              : { borderColor: d.rec.border, background: d.rec.bg }
+          }
         >
           <div className="flex items-center gap-2">
             <div className={KICKER} style={KICKER_STYLE}>
-              RECOMMENDED
+              {d.rec.kicker ?? "RECOMMENDED"}
             </div>
             <div
               className="rounded-[5px] px-[7px] py-[2px] font-mono text-[9px]"
-              style={{ letterSpacing: "0.08em", color: d.rec.tagColor, background: d.rec.tagBg }}
+              style={
+                d.rec.mode === "context"
+                  ? { letterSpacing: "0.08em", color: "oklch(0.45 0 0)", background: "oklch(0.94 0 0)" }
+                  : { letterSpacing: "0.08em", color: d.rec.tagColor, background: d.rec.tagBg }
+              }
             >
               {d.rec.direction}
             </div>
           </div>
-          <div className="mt-[7px] text-base font-semibold">{d.rec.label}</div>
-          <div className="mt-[5px] text-[13px] leading-[1.5]" style={{ color: "oklch(0.45 0 0)" }}>
-            {d.rec.rationale}
+          <div
+            className="mt-[7px] text-base font-semibold"
+            style={d.rec.mode === "context" ? { color: "oklch(0.45 0 0)" } : undefined}
+          >
+            {d.rec.label}
           </div>
+          {d.rec.rationale && (
+            <div className="mt-[5px] text-[13px] leading-[1.5]" style={{ color: "oklch(0.45 0 0)" }}>
+              {d.rec.rationale}
+            </div>
+          )}
+          {d.rec.mode === "context" && d.rec.contextNote && (
+            <div className="mt-[8px] font-mono text-[10px]" style={{ letterSpacing: "0.04em", color: "oklch(0.55 0 0)" }}>
+              {d.rec.contextNote}
+            </div>
+          )}
         </div>
       )}
 
@@ -227,6 +262,16 @@ export function CaseDetail({
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Next step: explain the state when there is nothing to click yet */}
+      {d.nextStep.show && (
+        <div
+          className="mt-6 rounded-[10px] border p-[13px_16px] text-[13px]"
+          style={{ borderColor: "oklch(0.92 0 0)", background: "oklch(0.98 0 0)", color: "oklch(0.45 0 0)" }}
+        >
+          {d.nextStep.text}
         </div>
       )}
 
