@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { renderDetail, viewFor, follows, flagged, decided } from "@/test/cockpit-helpers";
+import { renderDetail, viewFor, follows, flagged, decided, emptied } from "@/test/cockpit-helpers";
 
 describe("CaseDetail", () => {
   it("renders the client header with identifiers and the risk band delta", () => {
@@ -111,5 +111,28 @@ describe("CaseDetail", () => {
     renderDetail(viewFor("rm", "alpenrose"));
     expect(screen.getByText(/No messages yet/)).toBeInTheDocument();
     expect(screen.getByText("Nothing logged yet.")).toBeInTheDocument();
+  });
+
+  it("greys an already-escalated recommendation and explains there is nothing to click", () => {
+    renderDetail(viewFor("rm", "helvetia")); // seeded flagged_by_rm
+    expect(screen.getByText("ALREADY RECOMMENDED")).toBeInTheDocument();
+    expect(screen.getByText(/No action needed from you/)).toBeInTheDocument();
+    expect(screen.getByText(/Awaiting their decision/)).toBeInTheDocument();
+    // The live, full-colour "RECOMMENDED" kicker must not appear.
+    expect(screen.queryByText("RECOMMENDED")).toBeNull();
+  });
+
+  it("shows the first-line recommendation to Compliance as context above the live decisions", () => {
+    renderDetail(viewFor("compliance", "helvetia", flagged("helvetia")));
+    expect(screen.getByText("FIRST LINE RECOMMENDED")).toBeInTheDocument();
+    expect(screen.getByText(/Context for your decision below/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Require Re-KYC/ })).toBeInTheDocument();
+  });
+
+  it("shows placeholders for empty drift, change and fact sections", () => {
+    renderDetail(viewFor("rm", "castor", emptied("castor")));
+    expect(screen.getByText("No drift signals detected.")).toBeInTheDocument();
+    expect(screen.getByText("No changes recorded.")).toBeInTheDocument();
+    expect(screen.getByText("No key facts on file.")).toBeInTheDocument();
   });
 });

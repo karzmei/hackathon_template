@@ -62,6 +62,12 @@ export interface RecVM {
   border?: string;
   tagBg?: string;
   tagColor?: string;
+  // Set by buildDetail once the viewer is known: "actionable" when the current
+  // user can act on this first-line recommendation, "context" when it is shown
+  // only for reference (already acted, or seen by Compliance).
+  mode?: "actionable" | "context";
+  kicker?: string;
+  contextNote?: string;
 }
 
 // The first-line recommendation card styling (escalate / handover / monitor).
@@ -226,12 +232,16 @@ export interface DetailVM {
   materiality: number;
   matPct: string;
   signals: SignalBar[];
+  signalsEmpty: boolean;
   changes: ChangeRow[];
+  changesEmpty: boolean;
   facts: string[];
+  factsEmpty: boolean;
   rec: RecVM;
   hasActorButtons: boolean;
   actionHeading: string;
   actorButtons: ActorButton[];
+  nextStep: { show: boolean; text: string };
   instructionPending: boolean;
   instructionLabel: string;
   instructionDetail: string;
@@ -514,14 +524,18 @@ function outcomeFor(c: Case): { label: string; tone: ToneName; tail: string } | 
 function buildDetail(sel: Case, role: Role): DetailVM {
   const t: Tone = TONES[bandToneName(sel.band)];
   const st = statusPill(sel);
-  const rec = recVM(sel);
+  const recBase = recVM(sel);
   const ownerLabel = sel.owner === "am" ? "Account Manager (Marco)" : "Relationship Manager (Lena)";
 
   // actor buttons (first-line owner) / compliance decisions
   let actorButtons: ActorButton[] = [];
   let actionHeading = "";
+  // True only when the current viewer can still act on the first-line
+  // recommendation; drives whether the recommendation card is live or context.
+  let recActionable = false;
   if (role === "rm" && sel.owner === "rm" && (sel.status === "open" || sel.status === "reviewed")) {
     actionHeading = "YOUR MOVE · 1ST LINE";
+    recActionable = true;
     const escStyle = sel.recAction === "escalate_compliance" ? PRIMARY : SEC;
     const handStyle = sel.recAction === "handover_am" ? PRIMARY : SEC;
     actorButtons = [
@@ -531,6 +545,7 @@ function buildDetail(sel: Case, role: Role): DetailVM {
     ];
   } else if (role === "am" && sel.owner === "am" && sel.status !== "decided" && sel.status !== "escalated_by_am") {
     actionHeading = "YOUR MOVE · 1ST LINE";
+    recActionable = true;
     const escStyle = sel.recAction === "escalate_compliance" ? PRIMARY : SEC;
     actorButtons = [
       { key: "escalate", label: "Escalate to Compliance", sub: "up to 2nd line", ...escStyle },
@@ -572,6 +587,39 @@ function buildDetail(sel: Case, role: Role): DetailVM {
   const out = outcomeFor(sel);
   const ot = out ? TONES[out.tone] : TONES.neutral;
   const showDecidedBanner = sel.status === "decided" && !instrPending && !instrDone;
+
+  // recommendation: live for the first-line owner who can still act on it,
+  // otherwise greyed context (already acted, or seen by Compliance).
+  let rec = recBase;
+  if (recBase.has) {
+    if (recActionable) {
+      rec = { ...recBase, mode: "actionable", kicker: "RECOMMENDED" };
+    } else if (role === "compliance") {
+      rec = {
+        ...recBase,
+        mode: "context",
+        kicker: "FIRST LINE RECOMMENDED",
+        contextNote: "Context for your decision below.",
+      };
+    } else {
+      rec = {
+        ...recBase,
+        mode: "context",
+        kicker: "ALREADY RECOMMENDED",
+        contextNote: "No action needed from you right now.",
+      };
+    }
+  }
+
+  // next-step note: when there is nothing for this viewer to click and the case
+  // is not decided, explain the state and point to the always-present conversation.
+  const hasActorButtons = actorButtons.length > 0;
+  const nextStepShow = hasActorButtons || instrPending || instrDone || showDecidedBanner ? false : true;
+  const nextStepText = !nextStepShow
+    ? ""
+    : sel.status === "flagged_by_rm" || sel.status === "escalated_by_am" || sel.status === "in_compliance_review"
+      ? "This case is now with Compliance. Awaiting their decision; add context in the conversation below."
+      : "No action required from you right now; use the conversation below if needed.";
 
   // signals
   const maxPts = Math.max.apply(null, sel.signals.length ? sel.signals.map((s) => s.pts) : [1]);
@@ -629,12 +677,16 @@ function buildDetail(sel: Case, role: Role): DetailVM {
     materiality: sel.materiality,
     matPct: sel.materiality + "%",
     signals,
+    signalsEmpty: signals.length === 0,
     changes,
+    changesEmpty: changes.length === 0,
     facts: sel.facts,
+    factsEmpty: sel.facts.length === 0,
     rec,
-    hasActorButtons: actorButtons.length > 0,
+    hasActorButtons,
     actionHeading,
     actorButtons,
+    nextStep: { show: nextStepShow, text: nextStepText },
     instructionPending: instrPending,
     instructionLabel: im ? im.label : "",
     instructionDetail: im ? im.detail : "",
