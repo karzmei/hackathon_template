@@ -38,7 +38,9 @@ logger = logging.getLogger("driftwatch.pipeline")
 def _risk_band_label(baseline: BaselineProfile, live: LiveProfile, drift: DriftScore) -> str:
     if drift.band == RiskBand.low:
         return f"{baseline.risk_rating.value} (confirmed)"
-    return f"{baseline.risk_rating.value} -> {live.risk_rating.value}"
+    # Show drift severity band, not the profile risk rating which may not have
+    # changed if the LLM filter dropped the signal that would have raised it.
+    return f"{baseline.risk_rating.value} -> {drift.band.value.upper()}"
 
 
 def _no_change_drift(baseline: BaselineProfile) -> DriftScore:
