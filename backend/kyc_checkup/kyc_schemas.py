@@ -5,7 +5,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
-from schemas import AlertStatus, RecommendedAction, RiskBand
+from schemas import AlertStatus, BaselineProfile, RecommendedAction, RiskBand
 
 
 # ---------- Trigger types and routing ----------
@@ -56,6 +56,16 @@ TRIGGER_TO_CHECK_GROUPS = {
     TriggerType.BUSINESS_PROFILE_UPDATE: [CheckType.BUSINESS_ACTIVITY],
     TriggerType.MANUAL_REFRESH: list(CheckType),
 }
+
+
+# ---------- KYC profile models ----------
+
+class KycBaselineProfile(BaselineProfile):
+    legal_name: str
+    jurisdiction: str
+    registered_address: str | None = None
+    registry_status: str | None = None
+    legal_identifier: str | None = None
 
 
 # ---------- Request / Response models ----------
