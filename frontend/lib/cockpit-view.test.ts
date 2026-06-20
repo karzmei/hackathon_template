@@ -374,3 +374,55 @@ describe("buildView role gating and recipients", () => {
     expect(view.hasInboxUnread).toBe(true);
   });
 });
+
+describe("buildView surfaces messaged cases to the recipient", () => {
+  // A message addressed to a role pulls the case into that role's list even when
+  // the role does not own it, and pulses it unread until the recipient opens it.
+  it("an RM -> AM message surfaces the RM-owned case in the AM list, unread", () => {
+    const cases = seedCases().map((c) =>
+      c.id === "castor" // RM-owned
+        ? { ...c, messages: [{ from: "rm" as const, to: "am" as const, text: "Take a look.", ts: "20 Jun 09:00" }] }
+        : c,
+    );
+    const view = buildView({ role: "am", cases, selectedId: null, msgTo: "rm" });
+    const row = view.list.find((r) => r.id === "castor");
+    expect(row).toBeDefined(); // visible despite owner === "rm"
+    expect(row?.unread).toBe(true);
+  });
+
+  it("clears the unread dot once the message is marked read", () => {
+    const cases = seedCases().map((c) =>
+      c.id === "castor"
+        ? {
+            ...c,
+            messages: [{ from: "rm" as const, to: "am" as const, text: "Take a look.", ts: "20 Jun 09:00", read: true }],
+          }
+        : c,
+    );
+    const row = buildView({ role: "am", cases, selectedId: null, msgTo: "rm" }).list.find((r) => r.id === "castor");
+    expect(row).toBeDefined();
+    expect(row?.unread).toBe(false);
+  });
+
+  it("an AM -> RM message surfaces the AM-owned case in the RM list, unread", () => {
+    const cases = seedCases().map((c) =>
+      c.id === "nordwind" // AM-owned
+        ? { ...c, messages: [{ from: "am" as const, to: "rm" as const, text: "Your call.", ts: "20 Jun 09:00" }] }
+        : c,
+    );
+    const row = buildView({ role: "rm", cases, selectedId: null, msgTo: "am" }).list.find((r) => r.id === "nordwind");
+    expect(row).toBeDefined();
+    expect(row?.unread).toBe(true);
+  });
+
+  it("does not mark the sender's own row unread", () => {
+    const cases = seedCases().map((c) =>
+      c.id === "castor"
+        ? { ...c, messages: [{ from: "rm" as const, to: "am" as const, text: "Take a look.", ts: "20 Jun 09:00" }] }
+        : c,
+    );
+    // Lena sent it; for the RM the case is owned anyway but must not pulse unread.
+    const row = buildView({ role: "rm", cases, selectedId: null, msgTo: "am" }).list.find((r) => r.id === "castor");
+    expect(row?.unread).toBe(false);
+  });
+});

@@ -155,6 +155,28 @@ describe("useCockpit actions persist and audit", () => {
     act(() => result.current.sendMsg());
     expect(caseById(storedCases(), "bernina").messages.length).toBe(before);
   });
+
+  it("delivers a message to the recipient and clears its unread on open (FJ: RM -> AM)", () => {
+    // Lena (RM) messages Marco (AM) on her own case; Marco must see it and the
+    // unread dot must clear once he opens the case.
+    const { result } = renderHook(() => useCockpit());
+    act(() => result.current.pick("rm"));
+    act(() => result.current.select("castor")); // RM-owned
+    act(() => result.current.setMsgTo("am"));
+    act(() => result.current.setMsgDraft("New shareholder, please review."));
+    act(() => result.current.sendMsg());
+
+    // Marco picks up the case (no reload; shared localStorage / state).
+    act(() => result.current.logout());
+    act(() => result.current.pick("am"));
+    const delivered = caseById(result.current.cases, "castor").messages.at(-1);
+    expect(delivered).toMatchObject({ from: "rm", to: "am", text: "New shareholder, please review." });
+    expect(delivered?.read).toBeFalsy(); // unread until opened
+
+    act(() => result.current.select("castor"));
+    const afterOpen = caseById(storedCases(), "castor").messages.find((m) => m.to === "am");
+    expect(afterOpen?.read).toBe(true);
+  });
 });
 
 describe("useCockpit edge cases", () => {

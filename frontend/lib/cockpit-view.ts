@@ -142,7 +142,10 @@ export function rowVM(c: Case, selectedId: string | null, role: Role): RowVM {
     pillBorder: st.border,
     pillColor: st.color,
     materiality: c.materiality,
-    unread: (role === "compliance" && !!c.unread) || (role === "am" && !!c.amUnread),
+    unread:
+      (role === "compliance" && !!c.unread) ||
+      (role === "am" && !!c.amUnread) ||
+      hasUnreadMsg(c, role),
     selected: c.id === selectedId,
   };
 }
@@ -320,6 +323,18 @@ function inboxElig(c: Case): boolean {
   );
 }
 
+// A case surfaces for a role when it is a participant in the conversation, i.e.
+// the sender or recipient of any message. This is what lets a messaged peer see
+// (and open) a case they do not own.
+function inThread(c: Case, role: Role): boolean {
+  return (c.messages || []).some((m) => m.to === role || m.from === role);
+}
+
+// An incoming message the role has not opened yet drives the unread dot.
+function hasUnreadMsg(c: Case, role: Role): boolean {
+  return (c.messages || []).some((m) => m.to === role && !m.read);
+}
+
 export interface ViewInput {
   role: Role | null;
   cases: Case[];
@@ -339,7 +354,7 @@ export function buildView({ role, cases, selectedId, msgTo }: ViewInput): Cockpi
   let listSubtitle = "";
   let listEmptyText = "";
   if (role === "rm") {
-    const mine = cases.filter((c) => c.owner === "rm");
+    const mine = cases.filter((c) => c.owner === "rm" || inThread(c, "rm"));
     const order = mine
       .slice()
       .sort((a, b) => (a.quiet ? 1 : 0) - (b.quiet ? 1 : 0) || b.materiality - a.materiality);
@@ -349,7 +364,7 @@ export function buildView({ role, cases, selectedId, msgTo }: ViewInput): Cockpi
     listSubtitle = "Ranked by materiality · click a client";
     listEmptyText = "No clients in your book.";
   } else if (role === "am") {
-    const mine = cases.filter((c) => c.owner === "am");
+    const mine = cases.filter((c) => c.owner === "am" || inThread(c, "am"));
     const order = mine.slice().sort((a, b) => b.materiality - a.materiality);
     list = order.map((c) => rowVM(c, selectedId, role));
     listKicker = "STRUCTURAL WATCH";
@@ -358,7 +373,7 @@ export function buildView({ role, cases, selectedId, msgTo }: ViewInput): Cockpi
     listEmptyText = "Nothing assigned to you yet.";
   } else if (role === "compliance") {
     const inbox = cases
-      .filter(inboxElig)
+      .filter((c) => inboxElig(c) || inThread(c, "compliance"))
       .sort(
         (a, b) =>
           (a.status === "decided" ? 1 : 0) - (b.status === "decided" ? 1 : 0) ||
