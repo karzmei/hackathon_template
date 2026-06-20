@@ -46,6 +46,9 @@ export interface CaseMessage {
   to: Role;
   text: string;
   ts: string;
+  // Whether the recipient (m.to) has opened the case since this arrived. Undefined
+  // means unread; set true when the recipient selects the case.
+  read?: boolean;
 }
 
 export interface CaseAuditEntry {

@@ -158,24 +158,34 @@ export function useCockpit(): Cockpit {
       setSelectedId(id);
       setMsgToState(role ? defaultRecipient(role) : null);
       setMsgDraft("");
-      if (role === "compliance" && c) {
-        if (c.status === "flagged_by_rm" || c.status === "escalated_by_am") {
-          update(id, (x) => {
-            x.status = "in_compliance_review";
-            x.unread = false;
-            x.audit = [
-              ...x.audit,
-              { ts: now(), actor: "Sofia Keller · Compliance", action: "Opened case, review started" },
-            ];
-            return x;
-          });
-        } else if (c.unread) {
-          update(id, (x) => {
-            x.unread = false;
-            return x;
-          });
+      if (!c || !role) return;
+
+      // Opening a case can: move a flagged case into Compliance review, clear the
+      // case-level unread, and clear the unread dot on messages addressed to the
+      // viewer. Apply them in one update; two sequential updates would each read the
+      // pre-update mirror and clobber one another.
+      const opensForReview =
+        role === "compliance" && (c.status === "flagged_by_rm" || c.status === "escalated_by_am");
+      const clearsCaseUnread = role === "compliance" && !opensForReview && c.unread;
+      const clearsMsgUnread = (c.messages || []).some((m) => m.to === role && !m.read);
+      if (!opensForReview && !clearsCaseUnread && !clearsMsgUnread) return;
+
+      update(id, (x) => {
+        if (opensForReview) {
+          x.status = "in_compliance_review";
+          x.unread = false;
+          x.audit = [
+            ...x.audit,
+            { ts: now(), actor: "Sofia Keller · Compliance", action: "Opened case, review started" },
+          ];
+        } else if (clearsCaseUnread) {
+          x.unread = false;
         }
-      }
+        if (clearsMsgUnread) {
+          x.messages = (x.messages || []).map((m) => (m.to === role ? { ...m, read: true } : m));
+        }
+        return x;
+      });
     },
     [role, update],
   );
