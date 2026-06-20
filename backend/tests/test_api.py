@@ -5,15 +5,12 @@ the decision/audit flow.
 """
 
 import asyncio
-import os
 import unittest
+from unittest.mock import patch
 
 import store
 
-# Force offline mode so smoke tests never hit a real LLM endpoint.
-os.environ.pop("GOOGLE_API_KEY", None)
-os.environ.pop("GEMINI_API_KEY", None)
-os.environ.pop("AZURE_API_KEY", None)
+_NO_KEYS = {"GOOGLE_API_KEY": "", "GEMINI_API_KEY": "", "AZURE_API_KEY": "", "PUBLICAI_API_KEY": ""}
 from main import cost_today, decide, get_alert, list_alerts, run
 from schemas import AlertStatus, DecisionRequest, RecommendedAction
 
@@ -21,7 +18,8 @@ from schemas import AlertStatus, DecisionRequest, RecommendedAction
 class ApiSmokeTest(unittest.TestCase):
     def setUp(self):
         store.reset()
-        self.run_response = asyncio.run(run())
+        with patch.dict("os.environ", _NO_KEYS):
+            self.run_response = asyncio.run(run())
 
     def test_run_produces_two_alerts(self):
         self.assertEqual(len(self.run_response.alerts), 2)
