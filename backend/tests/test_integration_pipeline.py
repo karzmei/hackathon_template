@@ -39,11 +39,9 @@ class HelvetiaCascadeTest(unittest.TestCase):
         self.assertEqual(self.alert.status, AlertStatus.needs_review)
 
     def test_total_cost_is_step2_plus_step3(self):
-        baseline = baseline_for("helvetia")
-        survivors = basic_filter(public_signals_for("helvetia"))
-        kept, cost2 = asyncio.run(llm_reasoning_filter(survivors))
-        _, _, _, _, cost3 = asyncio.run(deep_analysis(baseline, kept))
-        self.assertEqual(self.alert.cost, cost2.add(cost3))
+        # Use per-step costs stored on the alert; re-running the pipeline would
+        # call the real LLM and produce non-deterministic token counts.
+        self.assertEqual(self.alert.cost, self.alert.cost_step2.add(self.alert.cost_step3))
         self.assertGreater(self.alert.cost.usd, 0)
 
     def test_drift_has_seven_dimensions(self):

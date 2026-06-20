@@ -9,10 +9,13 @@ import asyncio
 import json
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import store
 from data.seed import all_clients
 from pipeline.orchestrator import run_pipeline
+
+_NO_KEYS = {"GOOGLE_API_KEY": "", "GEMINI_API_KEY": "", "AZURE_API_KEY": "", "PUBLICAI_API_KEY": ""}
 
 HELVETIA = next(c for c in all_clients() if c.id == "helvetia")
 GOLDEN = Path(__file__).parent / "golden" / "helvetia_alert.json"
@@ -31,7 +34,8 @@ def _normalize(value):
 class HelvetiaSnapshotTest(unittest.TestCase):
     def test_alert_matches_golden(self):
         store.reset()
-        alert = asyncio.run(run_pipeline(HELVETIA))
+        with patch.dict("os.environ", _NO_KEYS):
+            alert = asyncio.run(run_pipeline(HELVETIA))
         snapshot = _normalize(alert.model_dump(mode="json", by_alias=True))
 
         if not GOLDEN.exists():

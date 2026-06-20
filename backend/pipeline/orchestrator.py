@@ -68,6 +68,8 @@ def _assemble(
     signals: list,
     depth: int,
     cost: Cost,
+    cost_step2: Cost | None = None,
+    cost_step3: Cost | None = None,
 ) -> Alert:
     created_at = store.now_iso()
     top_change = drift.invalidated_assumptions[0] if drift.invalidated_assumptions else "No material change; baseline confirmed"
@@ -97,6 +99,8 @@ def _assemble(
         current=live,
         analysis_depth=depth,
         cost=cost,
+        cost_step2=cost_step2 or Cost(),
+        cost_step3=cost_step3 or Cost(),
         status=status,
         created_at=created_at,
         audit=[created_event],
@@ -127,9 +131,9 @@ async def run_pipeline(client: Client) -> Alert:
         live = LiveProfile(**baseline.model_dump())
         drift = _no_change_drift(baseline)
         implies = "Signals were not material on reasoning; the baseline is confirmed."
-        return _assemble(client, baseline, live, drift, implies, RecommendedAction.no_change, [], 2, cost2)
+        return _assemble(client, baseline, live, drift, implies, RecommendedAction.no_change, [], 2, cost2, cost_step2=cost2)
 
     # Step 3: deep analysis (drift engine reads the baseline here).
     drift, live, implies, action, cost3 = await deep_analysis(baseline, survivors2)
     total_cost = cost2.add(cost3)
-    return _assemble(client, baseline, live, drift, implies, action, survivors2, 3, total_cost)
+    return _assemble(client, baseline, live, drift, implies, action, survivors2, 3, total_cost, cost_step2=cost2, cost_step3=cost3)
