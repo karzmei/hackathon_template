@@ -12,4 +12,13 @@ describe("StatusPill", () => {
     render(<StatusPill status="needs_review" />);
     expect(screen.getByText("Needs review")).toBeInTheDocument();
   });
+
+  it.each([
+    ["new", "New"],
+    ["escalated", "Escalated"],
+    ["dismissed", "Dismissed"],
+  ] as const)("renders the human label for %s", (status, label) => {
+    render(<StatusPill status={status} />);
+    expect(screen.getByText(label)).toBeInTheDocument();
+  });
 });

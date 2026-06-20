@@ -19,4 +19,15 @@ describe("Sparkline", () => {
     render(<Sparkline values={[0.3]} level="medium" />);
     expect(screen.getByRole("img", { name: "drift sparkline" })).toBeInTheDocument();
   });
+
+  it("renders no bars for an empty value list", () => {
+    render(<Sparkline values={[]} level="low" />);
+    expect(screen.getByRole("img", { name: "drift sparkline" })).toBeInTheDocument();
+    expect(screen.queryAllByTestId("spark-bar")).toHaveLength(0);
+  });
+
+  it("floors a zero value to a visible 8% height", () => {
+    render(<Sparkline values={[0]} level="high" />);
+    expect(screen.getByTestId("spark-bar")).toHaveStyle({ height: "8%" });
+  });
 });
