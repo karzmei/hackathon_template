@@ -1,5 +1,4 @@
 import { Cost } from "@/lib/api";
-import { cn } from "@/lib/utils";
 
 // Per-alert (and optionally per-day) cost chip; the cost-efficiency story made visible.
 export function CostMeter({
@@ -13,11 +12,7 @@ export function CostMeter({
 }) {
   const depthLabel = depth ? ["", "BASIC", "REASONED", "DEEP"][depth] : null;
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-2 rounded-md border bg-card px-2 py-1 text-xs text-foreground"
-      )}
-    >
+    <span className="inline-flex items-center gap-2 rounded-md border bg-card px-2 py-1 text-xs text-foreground">
       {depthLabel && (
         <span className="font-semibold tracking-wide text-foreground">
           {depthLabel}

@@ -8,8 +8,6 @@ that turns the invalidated assumptions into a short "what this implies" narrativ
 
 from __future__ import annotations
 
-import json
-
 import config
 from llm.adk_agent import run_agent
 from schemas import BaselineProfile, Cost, DriftScore, LiveProfile, RecommendedAction, Signal
