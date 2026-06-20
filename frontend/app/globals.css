@@ -162,6 +162,21 @@
 .dw-fade-hover:hover {
   opacity: 0.9;
 }
+/* Decision-action buttons: a raised surface that lifts on hover and presses on
+   click, so they read as buttons, not tags. */
+.dw-action {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 1px 1px rgba(0, 0, 0, 0.04);
+  transition: transform 0.12s, box-shadow 0.12s, filter 0.12s;
+}
+.dw-action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+  filter: brightness(0.98);
+}
+.dw-action:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
 .dw-dark-hover:hover {
   background: oklch(0.32 0 0) !important;
 }
@@ -173,6 +188,11 @@
   .dw-in,
   .dw-bar {
     animation: none;
+  }
+  .dw-action,
+  .dw-action:hover,
+  .dw-action:active {
+    transform: none;
   }
 }
 

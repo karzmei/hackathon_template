@@ -1,10 +1,26 @@
 "use client";
 
+import { ArrowDown, ArrowRight, ArrowUp, Check, Flag, type LucideIcon } from "lucide-react";
+
 import type { Role } from "@/lib/cockpit-types";
 import type { DetailVM, RecipientVM } from "@/lib/cockpit-view";
 
 const KICKER = "font-mono text-[10px]";
 const KICKER_STYLE = { letterSpacing: "0.14em", color: "oklch(0.5 0 0)" } as const;
+
+// Action icon by button key; reinforces the case-flow metaphor (up = escalate,
+// sideways = handover, down = back to 1st line) and marks these as buttons, not tags.
+const ACTION_ICON: Record<string, LucideIcon> = {
+  escalate: ArrowUp,
+  mlro: ArrowUp,
+  handover: ArrowRight,
+  handback: ArrowRight,
+  re_kyc: ArrowDown,
+  doc_request: ArrowDown,
+  watchlist: Flag,
+  reviewed: Check,
+  dismiss: Check,
+};
 
 export interface CaseDetailProps {
   detail: DetailVM;
@@ -57,7 +73,7 @@ export function CaseDetail({
             </>
           )}
           <span
-            className="rounded-[7px] border px-[9px] py-1 font-mono text-[11.5px] font-semibold"
+            className="cursor-default rounded-[7px] border px-[9px] py-1 font-mono text-[11.5px] font-semibold"
             style={{ background: d.bandBg, color: d.bandColor, borderColor: d.bandBorder }}
           >
             {d.band} RISK
@@ -67,13 +83,13 @@ export function CaseDetail({
 
       <div className="mt-[13px] flex flex-wrap items-center gap-2">
         <span
-          className="inline-block rounded-full border px-3 py-[3px] text-xs"
+          className="inline-block cursor-default rounded-full border px-3 py-[3px] text-xs"
           style={{ background: d.statusBg, color: d.statusColor, borderColor: d.statusBorder }}
         >
           {d.statusText}
         </span>
         <span
-          className="rounded-full border px-[9px] py-[3px] font-mono text-[10px]"
+          className="cursor-default rounded-full border px-[9px] py-[3px] font-mono text-[10px]"
           style={{ color: "oklch(0.5 0 0)", background: "oklch(0.96 0 0)", borderColor: "oklch(0.92 0 0)" }}
         >
           Owner · {d.ownerLabel}
@@ -154,7 +170,7 @@ export function CaseDetail({
         {d.facts.map((f) => (
           <div
             key={f}
-            className="rounded-lg border px-[11px] py-2 text-[12.5px]"
+            className="cursor-default rounded-lg border px-[11px] py-2 text-[12.5px]"
             style={{ color: "oklch(0.35 0 0)", background: "oklch(0.97 0 0)", borderColor: "oklch(0.93 0 0)" }}
           >
             {f}
@@ -182,7 +198,7 @@ export function CaseDetail({
               {d.rec.kicker ?? "RECOMMENDED"}
             </div>
             <div
-              className="rounded-[5px] px-[7px] py-[2px] font-mono text-[9px]"
+              className="cursor-default rounded-[5px] px-[7px] py-[2px] font-mono text-[9px]"
               style={
                 d.rec.mode === "context"
                   ? { letterSpacing: "0.08em", color: "oklch(0.45 0 0)", background: "oklch(0.94 0 0)" }
@@ -248,19 +264,25 @@ export function CaseDetail({
             {d.actionHeading}
           </div>
           <div className="flex flex-wrap gap-[10px]">
-            {d.actorButtons.map((b) => (
-              <button
-                key={b.key}
-                onClick={() => onAction(b.key)}
-                className="dw-fade-hover flex cursor-pointer flex-col items-start gap-[2px] rounded-[9px] px-4 py-[10px]"
-                style={{ background: b.bg, color: b.color, border: b.border }}
-              >
-                <span className="text-[13px] font-medium">{b.label}</span>
-                <span className="font-mono text-[8.5px]" style={{ letterSpacing: "0.06em", color: b.subColor }}>
-                  {b.sub}
-                </span>
-              </button>
-            ))}
+            {d.actorButtons.map((b) => {
+              const Icon = ACTION_ICON[b.key];
+              return (
+                <button
+                  key={b.key}
+                  onClick={() => onAction(b.key)}
+                  className="dw-action flex cursor-pointer items-center gap-3 rounded-[10px] px-4 py-[11px]"
+                  style={{ background: b.bg, color: b.color, border: b.border }}
+                >
+                  {Icon && <Icon size={15} strokeWidth={2} aria-hidden />}
+                  <span className="flex flex-col items-start gap-[2px]">
+                    <span className="text-[13px] font-medium">{b.label}</span>
+                    <span className="font-mono text-[8.5px]" style={{ letterSpacing: "0.06em", color: b.subColor }}>
+                      {b.sub}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}

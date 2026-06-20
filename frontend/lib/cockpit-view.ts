@@ -305,9 +305,11 @@ export interface CockpitView {
   msgPlaceholder: string;
 }
 
+// Button surfaces. The non-primary variants carry a faint fill (not pure white) so they
+// read as raised buttons, not the white-bordered chips used for passive info tags.
 const PRIMARY = { bg: "oklch(0.205 0 0)", color: "#fff", border: "none", subColor: "oklch(0.75 0 0)" };
-const SEC = { bg: "#fff", color: "oklch(0.25 0 0)", border: "1px solid oklch(0.85 0 0)", subColor: "oklch(0.6 0 0)" };
-const GHOST = { bg: "#fff", color: "oklch(0.45 0 0)", border: "1px solid oklch(0.9 0 0)", subColor: "oklch(0.65 0 0)" };
+const SEC = { bg: "oklch(0.985 0 0)", color: "oklch(0.25 0 0)", border: "1px solid oklch(0.85 0 0)", subColor: "oklch(0.6 0 0)" };
+const GHOST = { bg: "oklch(0.975 0 0)", color: "oklch(0.45 0 0)", border: "1px solid oklch(0.9 0 0)", subColor: "oklch(0.65 0 0)" };
 
 function toLabel(r: Role): string {
   return r === "rm" ? "RM" : r === "am" ? "AM" : "Compliance";
@@ -559,11 +561,13 @@ function buildDetail(sel: Case, role: Role): DetailVM {
     const mk = (key: Decision, label: string, sub: string, tone: ToneName): ActorButton => {
       const tt = TONES[tone];
       const prim = cr === key;
+      // Non-primary decisions sit on a faint button surface and keep the tone only as the
+      // border and text accent, so they read as buttons that are colour-coded, not as tags.
       return {
         key,
         label,
         sub,
-        bg: prim ? "oklch(0.205 0 0)" : tt.bg,
+        bg: prim ? "oklch(0.205 0 0)" : "oklch(0.985 0 0)",
         color: prim ? "#fff" : tt.text,
         border: prim ? "none" : "1px solid " + tt.border,
         subColor: prim ? "oklch(0.75 0 0)" : tt.text,
