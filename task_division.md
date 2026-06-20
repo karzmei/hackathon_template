@@ -64,20 +64,29 @@ Cost criteria; own the pitch and the compliance story.
 
 ## Dmitry: Stage 2 LLM filter + Stage 3 narrative
 
+**Status: DONE** (PR #5 + feat/drift-engine-confidence)
+
 **Goal:** reliable mid-tier triage and a clear, compliant "what this implies" narrative, with accurate
 per-call cost feeding the cost meter.
 
 **Owns:** `backend/pipeline/step2_llm_filter.py`, `backend/llm/adk_agent.py`, the LLM-narrative part of
 `backend/pipeline/step3_analysis.py`, and the LLM pricing and deployment names in `backend/config.py`.
 
-**Suggested features:**
-- Replace the offline stub in step 2 with real reasoning via `run_agent` (Google ADK driving Azure
-  through LiteLLM, already wired). Keep robust JSON parsing with a fail-open fallback that preserves evidence.
-- Prompt-engineer the step 3 narrative so it reads well for a compliance analyst and stays concise.
-- Verify token to USD figures are demo-stable using the price table in `config.py`.
+**Done:**
+- [x] Replaced offline stub in step 2 with real LLM reasoning via `run_agent`; rewrote prompt for
+  senior KYC analyst tone with explicit materiality criteria; added markdown fence stripping before
+  JSON parse with fail-open fallback.
+- [x] Prompt-engineered step 3 narrative with full context: baseline vs live profile, per-dimension
+  changes, signal sources and drift score; output is specific and source-cited.
+- [x] Added Google Gemini fallback (`gemini-2.5-flash`) when Azure is not configured; priority is
+  Azure > Gemini > offline stub. Add `GOOGLE_API_KEY` to `.env` to activate.
+- [x] Token to USD cost figures verified demo-stable via price table in `config.py`.
+- [x] Claimed Part 3 (drift engine): replaced binary delta with confidence-weighted scoring;
+  `aggregate = sum(weight * signal_confidence)` per changed dimension. Helvetia: 1.0 -> 0.82, still HIGH.
+- [x] Smoke tests fixed to always run offline regardless of keys in `.env`.
 
-**Avoid:** the deterministic drift math (now in `pipeline/drift_engine.py`) and the public connectors.
-Keep `run_agent`'s signature stable; coordinate any change with the orchestrator.
+**Avoid:** the public connectors (Juhi). Keep `run_agent`'s signature stable; coordinate any change
+with the orchestrator.
 
 ## Juhi: Part 1, public data ingestion and connectors
 
@@ -116,19 +125,20 @@ cost, plus the synthetic demo scenario that proves the cascade.
 **Data-plane rule:** step 1 must not import `private_source.py`; baselines are read only by the drift
 engine (step 3) and the final assembly.
 
-## Part 3: Drift engine (floating, first to finish claims it)
+## Part 3: Drift engine (claimed by Dmitry)
+
+**Status: DONE** (feat/drift-engine-confidence)
 
 **What:** `backend/pipeline/drift_engine.py` (deterministic baseline-vs-current diff, weighted aggregate
 score, band, invalidated assumptions, `recommend_action`) plus `orchestrator.py` polish (correlation
 across sources and time, logging where each signal dies). This is the AI-Intelligence core: we detect
 invalidated onboarding assumptions, not keyword alerts.
 
-**Why floating:** it bridges Karina's baselines and Dmitry's narrative, so assign it to whoever finishes
-their core task first. Ari helps define what Part 3 must surface for the UI and the pitch.
-
-**Stretch ideas:** confidence-weighted deltas instead of binary changed/unchanged; per-industry weight
-overrides; correlation that lets several low-confidence signals on different dimensions jointly cross
-the threshold.
+**Done:**
+- [x] Confidence-weighted deltas: `delta = signal.confidence` per dimension instead of binary 1.0/0.0.
+- [x] `_dim_confidence()` maps signal `raw` keys to dimensions to find the max confidence per dimension.
+- [ ] Per-industry weight overrides (stretch, not started).
+- [ ] Multi-signal correlation across low-confidence dimensions (stretch, not started).
 
 ## How to run and test
 
