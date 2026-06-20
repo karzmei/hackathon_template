@@ -20,15 +20,41 @@ class TriggerType(StrEnum):
     MANUAL_REFRESH = "manual_refresh"
 
 
+class CheckType(StrEnum):
+    LEGAL_ENTITY = "legal_entity"
+    OWNERSHIP = "ownership"
+    SANCTIONS_WATCHLIST = "sanctions_watchlist"
+    ADVERSE_MEDIA = "adverse_media"
+    BUSINESS_ACTIVITY = "business_activity"
+    WEBSITE_DOMAIN = "website_domain"
+    FINANCIAL_ACTIVITY = "financial_activity"
+
+
 # could be made smarter
 TRIGGER_TO_CHECK_GROUPS = {
-    TriggerType.REGISTRY_UPDATE: ["legal"],
-    TriggerType.TRANSACTION_UPDATE: ["financial"],
-    TriggerType.NEWS_UPDATE: ["news", "business"],
-    TriggerType.WEBSITE_UPDATE: ["website", "business"],
-    TriggerType.FUNDING_UPDATE: ["financial", "business"],
-    TriggerType.BUSINESS_PROFILE_UPDATE: ["business"],
-    TriggerType.MANUAL_REFRESH: ["legal", "financial", "news", "website", "business"],
+    TriggerType.REGISTRY_UPDATE: [
+        CheckType.LEGAL_ENTITY,
+        CheckType.OWNERSHIP,
+        CheckType.SANCTIONS_WATCHLIST,
+    ],
+    TriggerType.TRANSACTION_UPDATE: [CheckType.FINANCIAL_ACTIVITY],
+    TriggerType.NEWS_UPDATE: [
+        CheckType.ADVERSE_MEDIA,
+        CheckType.BUSINESS_ACTIVITY,
+        CheckType.LEGAL_ENTITY,
+        CheckType.OWNERSHIP,
+        CheckType.SANCTIONS_WATCHLIST,
+    ],
+    TriggerType.WEBSITE_UPDATE: [
+        CheckType.WEBSITE_DOMAIN,
+        CheckType.BUSINESS_ACTIVITY,
+    ],
+    TriggerType.FUNDING_UPDATE: [
+        CheckType.FINANCIAL_ACTIVITY,
+        CheckType.BUSINESS_ACTIVITY,
+    ],
+    TriggerType.BUSINESS_PROFILE_UPDATE: [CheckType.BUSINESS_ACTIVITY],
+    TriggerType.MANUAL_REFRESH: list(CheckType),
 }
 
 
