@@ -50,7 +50,7 @@ test("@smoke switching role returns to the seat picker", async ({ page }) => {
   await expect(page.getByText("Accounts you own")).toBeVisible();
 
   await page.getByRole("button", { name: "SWITCH ROLE" }).click();
-  await expect(page.getByRole("heading", { name: /Who's on shift\?/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Select your role/ })).toBeVisible();
 });
 
 // FJ3 in docs/USER_JOURNEYS.md: RM hands a complex case sideways to the Account Manager.
@@ -135,4 +135,57 @@ test("@smoke RM reviews a quiet client with no change", async ({ page }) => {
 
   await page.getByRole("button", { name: /Reviewed · no change/ }).click();
   await expect(page.getByText(/Reviewed, no change/)).toBeVisible();
+});
+
+// A case message must reach its recipient: the case surfaces in their book, pulses
+// unread, and the message is readable once opened. Directions are symmetric.
+test("@smoke RM message to AM surfaces the case for Marco and reads", async ({ page }) => {
+  const marker = "RM->AM new shareholder review needed";
+  await page.goto("/");
+
+  // Lena (RM) opens an RM-owned case and messages the Account Manager.
+  await page.getByRole("button", { name: /Lena Brunner/ }).click();
+  await page.getByRole("button", { name: /Castor Mining Ltd/ }).click();
+  await page.getByRole("button", { name: "MR Account Manager" }).click(); // recipient pill = AM
+  await page.getByRole("textbox").fill(marker);
+  await page.getByRole("button", { name: "Send message" }).click();
+  await expect(page.getByText(marker)).toBeVisible();
+
+  // Marco (AM) takes the seat; the RM-owned case now appears in his book, unread.
+  await page.getByRole("button", { name: "SWITCH ROLE" }).click();
+  await page.getByRole("button", { name: /Marco Reuss/ }).click();
+  const row = page.getByRole("button", { name: /Castor Mining Ltd/ });
+  await expect(row).toBeVisible();
+  await expect(row.getByLabel("unread")).toBeVisible();
+
+  // Opening it shows the message and clears the unread dot.
+  await row.click();
+  await expect(page.getByRole("heading", { name: "Castor Mining Ltd" })).toBeVisible();
+  await expect(page.getByText(marker)).toBeVisible();
+  await expect(row.getByLabel("unread")).toHaveCount(0);
+});
+
+test("@smoke AM message to RM surfaces the case for Lena and reads", async ({ page }) => {
+  const marker = "AM->RM your call on this account";
+  await page.goto("/");
+
+  // Marco (AM) opens an AM-owned case and messages the Relationship Manager.
+  await page.getByRole("button", { name: /Marco Reuss/ }).click();
+  await page.getByRole("button", { name: /Nordwind Trading GmbH/ }).click();
+  await page.getByRole("button", { name: "LB Relationship Manager" }).click(); // recipient pill = RM
+  await page.getByRole("textbox").fill(marker);
+  await page.getByRole("button", { name: "Send message" }).click();
+  await expect(page.getByText(marker)).toBeVisible();
+
+  // Lena (RM) takes the seat; the AM-owned case now appears in her book, unread.
+  await page.getByRole("button", { name: "SWITCH ROLE" }).click();
+  await page.getByRole("button", { name: /Lena Brunner/ }).click();
+  const row = page.getByRole("button", { name: /Nordwind Trading GmbH/ });
+  await expect(row).toBeVisible();
+  await expect(row.getByLabel("unread")).toBeVisible();
+
+  await row.click();
+  await expect(page.getByRole("heading", { name: "Nordwind Trading GmbH" })).toBeVisible();
+  await expect(page.getByText(marker)).toBeVisible();
+  await expect(row.getByLabel("unread")).toHaveCount(0);
 });

@@ -18,6 +18,7 @@
     "domain": "helvetia-saas.ch",
     "expected_activity": "Monthly subscription revenue from Swiss SME clients",
     "expected_volume_band": "low",
+    "jurisdiction": "CH (low risk)",
     "legal_form": "GmbH",
     "owners": [
       {
@@ -36,9 +37,9 @@
   "client_id": "helvetia",
   "client_name": "Helvetia SaaS GmbH",
   "cost": {
-    "tokens_in": 865,
-    "tokens_out": 201,
-    "usd": 0.002187
+    "tokens_in": 1330,
+    "tokens_out": 319,
+    "usd": 0.001043
   },
   "created_at": "<normalized>",
   "current": {
@@ -47,6 +48,7 @@
     "domain": "helvetia-otc.io",
     "expected_activity": "Monthly subscription revenue from Swiss SME clients",
     "expected_volume_band": "high",
+    "jurisdiction": "KY (high risk)",
     "legal_form": "AG",
     "owners": [
       {
@@ -68,14 +70,15 @@
     "risk_rating": "HIGH"
   },
   "drift_score": {
-    "aggregate": 0.8695,
+    "aggregate": 1.0,
     "band": "high",
     "client_id": "helvetia",
-    "confidence": 0.843,
+    "confidence": 0.821,
     "invalidated_assumptions": [
       "business model: B2B SaaS -> Crypto OTC desk",
       "ownership: 2 owners -> 3 owners (1 unscreened)",
       "legal form: GmbH -> AG",
+      "jurisdiction: CH (low risk) -> KY (high risk)",
       "expected volume: low -> high",
       "risk rating: LOW -> HIGH",
       "domain: helvetia-saas.ch -> helvetia-otc.io"
@@ -86,47 +89,54 @@
         "dimension": "business_model",
         "from": "B2B SaaS",
         "to": "Crypto OTC desk",
-        "weight": 0.25
+        "weight": 0.9
       },
       {
         "delta": 0.95,
         "dimension": "ownership",
         "from": "2 owners",
         "to": "3 owners (1 unscreened)",
-        "weight": 0.2
+        "weight": 0.85
       },
       {
         "delta": 0.95,
         "dimension": "legal_form",
         "from": "GmbH",
         "to": "AG",
-        "weight": 0.15
+        "weight": 0.5
+      },
+      {
+        "delta": 0.83,
+        "dimension": "jurisdiction",
+        "from": "CH (low risk)",
+        "to": "KY (high risk)",
+        "weight": 0.8
       },
       {
         "delta": 0.8,
         "dimension": "expected_volume",
         "from": "low",
         "to": "high",
-        "weight": 0.15
+        "weight": 0.4
       },
       {
-        "delta": 0.75,
+        "delta": 0.85,
         "dimension": "risk_rating",
         "from": "LOW",
         "to": "HIGH",
-        "weight": 0.15
+        "weight": 1.0
       },
       {
         "delta": 0.87,
         "dimension": "domain",
         "from": "helvetia-saas.ch",
         "to": "helvetia-otc.io",
-        "weight": 0.1
+        "weight": 0.4
       }
     ]
   },
   "id": "alert-helvetia",
-  "implies": "Multiple public signals jointly moved the profile: business model: B2B SaaS -> Crypto OTC desk; ownership: 2 owners -> 3 owners (1 unscreened); legal form: GmbH -> AG; expected volume: low -> high; risk rating: LOW -> HIGH; domain: helvetia-saas.ch -> helvetia-otc.io. These changes invalidate the onboarded assumptions and warrant re-kyc. [offline demo narrative]",
+  "implies": "Multiple public signals jointly moved the profile: business model: B2B SaaS -> Crypto OTC desk; ownership: 2 owners -> 3 owners (1 unscreened); legal form: GmbH -> AG; jurisdiction: CH (low risk) -> KY (high risk); expected volume: low -> high; risk rating: LOW -> HIGH; domain: helvetia-saas.ch -> helvetia-otc.io. These changes invalidate the onboarded assumptions and warrant re-kyc. [offline demo narrative]",
   "recommended_action": "re_kyc",
   "risk_band": "LOW -> HIGH",
   "signals": [
@@ -187,6 +197,59 @@
       },
       "source": "internal_tx",
       "summary": "Dormant account resumes activity with high-volume crypto-linked inflows."
+    },
+    {
+      "client_id": "helvetia",
+      "confidence": 0.85,
+      "evidence_url": "https://opensanctions.org/entities/nordwind-ubo",
+      "id": "hv-5",
+      "kind": "pep_hit",
+      "observed_at": "2026-06-11",
+      "raw": {
+        "risk_rating": "HIGH"
+      },
+      "source": "opensanctions",
+      "summary": "Screening match: the UBO behind new 40% shareholder Nordwind Holdings Ltd is a politically exposed person, a sitting foreign deputy minister."
+    },
+    {
+      "client_id": "helvetia",
+      "confidence": 0.83,
+      "evidence_url": null,
+      "id": "hv-6",
+      "kind": "high_risk_jurisdiction",
+      "observed_at": "2026-06-13",
+      "raw": {
+        "jurisdiction": "KY (high risk)",
+        "risk_rating": "HIGH"
+      },
+      "source": "internal_tx",
+      "summary": "Post-transaction monitoring: large inbound and outbound wires routed through a high-risk jurisdiction (Cayman Islands) inconsistent with the profile."
+    },
+    {
+      "client_id": "helvetia",
+      "confidence": 0.75,
+      "evidence_url": null,
+      "id": "hv-7",
+      "kind": "suspicious_activity",
+      "observed_at": "2026-06-15",
+      "raw": {
+        "risk_rating": "HIGH"
+      },
+      "source": "internal_tx",
+      "summary": "Post-transaction monitoring: many small transfers just under the reporting threshold within a short window, a structuring pattern."
+    },
+    {
+      "client_id": "helvetia",
+      "confidence": 0.77,
+      "evidence_url": "/sources/helvetia-probe.html",
+      "id": "hv-8",
+      "kind": "adverse_media",
+      "observed_at": "2026-06-17",
+      "raw": {
+        "risk_rating": "HIGH"
+      },
+      "source": "gdelt",
+      "summary": "Wire report: FINMA opens a regulatory probe into Helvetia SaaS GmbH over alleged unlicensed crypto brokerage and AML control failures."
     }
   ],
   "status": "needs_review",

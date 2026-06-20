@@ -1,0 +1,34 @@
+{
+  "client_id": "client_helvetia_analytics_ag",
+  "trigger_id": "website-change-helvetia-analytics-2026-06-20",
+  "trigger_type": "website_update",
+  "payload": {
+    "source_type": "website",
+    "approved_business_description": "B2B SaaS for logistics and supply-chain analytics",
+    "approved_sectors": ["logistics software", "data analytics"],
+    "approved_products_services": ["subscription analytics software", "implementation support"],
+    "approved_customer_types": ["corporate logistics and supply-chain teams"],
+    "approved_geographies": ["CH", "DE", "AT"],
+    "previous_text": "Helvetia Analytics helps logistics and supply-chain teams improve forecasting, routing, and operational planning through subscription analytics software.",
+    "new_text": "Helvetia Analytics now supports institutional clients with digital-asset liquidity, crypto OTC execution, and stablecoin settlement workflows. Its new treasury desk helps corporate clients convert between CHF, EUR, USDC, and BTC for cross-border settlement and liquidity management.",
+    "website_text": "Helvetia Analytics now supports institutional clients with digital-asset liquidity, crypto OTC execution, and stablecoin settlement workflows. Its new treasury desk helps corporate clients convert between CHF, EUR, USDC, and BTC for cross-border settlement and liquidity management.",
+    "implied_drift": {
+      "business_domain_changed": true,
+      "previous_business_domain": "B2B SaaS / logistics analytics",
+      "new_business_domain": "crypto OTC / digital-asset treasury services",
+      "added_tags": [
+        "crypto_otc",
+        "digital_asset_liquidity",
+        "stablecoin_settlement",
+        "treasury_services",
+        "cryptoasset_services"
+      ],
+      "risk_implications": [
+        "possible cryptoasset services",
+        "fiat/crypto conversion",
+        "materially different counterparties and transaction flows",
+        "original low-risk SaaS KYC baseline may no longer be valid"
+      ]
+    }
+  }
+}

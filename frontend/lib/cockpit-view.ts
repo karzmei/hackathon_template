@@ -14,6 +14,7 @@ import {
   type Tone,
   type ToneName,
 } from "@/lib/cockpit-types";
+import { digestLabel } from "@/lib/utils";
 
 export function bandToneName(b: RiskBand): ToneName {
   if (b === "LOW") return "success";
@@ -42,6 +43,8 @@ export function statusPill(c: Case): Pill {
       return pill(c.instructionDone ? "Document provided" : "Compliance: document requested", "warning");
     if (c.decision === "watchlist") return pill("Compliance: Watchlisted", "danger");
     if (c.decision === "mlro") return pill("Compliance: Escalated to MLRO", "info");
+    if (c.decision === "contact_ops")
+      return pill("Reclassification recommended; pending operations", "info");
     if (c.decision === "dismiss") return pill("Compliance: cleared, no action", "success");
   }
   if (c.status === "flagged_by_rm") return pill("Flagged · awaiting Compliance", "info");
@@ -62,6 +65,12 @@ export interface RecVM {
   border?: string;
   tagBg?: string;
   tagColor?: string;
+  // Set by buildDetail once the viewer is known: "actionable" when the current
+  // user can act on this first-line recommendation, "context" when it is shown
+  // only for reference (already acted, or seen by Compliance).
+  mode?: "actionable" | "context";
+  kicker?: string;
+  contextNote?: string;
 }
 
 // The first-line recommendation card styling (escalate / handover / monitor).
@@ -136,7 +145,10 @@ export function rowVM(c: Case, selectedId: string | null, role: Role): RowVM {
     pillBorder: st.border,
     pillColor: st.color,
     materiality: c.materiality,
-    unread: (role === "compliance" && !!c.unread) || (role === "am" && !!c.amUnread),
+    unread:
+      (role === "compliance" && !!c.unread) ||
+      (role === "am" && !!c.amUnread) ||
+      hasUnreadMsg(c, role),
     selected: c.id === selectedId,
   };
 }
@@ -145,11 +157,6 @@ export interface NavItemVM {
   label: string;
   count: number;
   hasCount: boolean;
-  active: boolean;
-  weight: string;
-  bg: string;
-  border: string;
-  color: string;
   countBg: string;
   countColor: string;
 }
@@ -157,7 +164,6 @@ export interface NavItemVM {
 export function navItem(
   label: string,
   count: number,
-  active: boolean,
   showCount: boolean,
   countTone?: ToneName,
 ): NavItemVM {
@@ -166,11 +172,6 @@ export function navItem(
     label,
     count,
     hasCount: showCount,
-    active,
-    weight: active ? "500" : "400",
-    bg: active ? "#fff" : "transparent",
-    border: active ? "1px solid oklch(0.9 0 0)" : "1px solid transparent",
-    color: active ? "oklch(0.205 0 0)" : "oklch(0.5 0 0)",
     countBg: ct ? ct.bg : "oklch(0.205 0 0)",
     countColor: ct ? ct.text : "#fff",
   };
@@ -199,6 +200,8 @@ export interface ChangeRow {
   src: string;
   dot: string;
   textColor: string;
+  // When present, the cited source label renders as a link to this URL.
+  url?: string;
 }
 
 export interface ThreadMessage {
@@ -215,6 +218,7 @@ export interface ThreadMessage {
 }
 
 export interface DetailVM {
+  caseId: string;
   client: string;
   lei: string;
   sector: string;
@@ -234,12 +238,16 @@ export interface DetailVM {
   materiality: number;
   matPct: string;
   signals: SignalBar[];
+  signalsEmpty: boolean;
   changes: ChangeRow[];
+  changesEmpty: boolean;
   facts: string[];
+  factsEmpty: boolean;
   rec: RecVM;
   hasActorButtons: boolean;
   actionHeading: string;
   actorButtons: ActorButton[];
+  nextStep: { show: boolean; text: string };
   instructionPending: boolean;
   instructionLabel: string;
   instructionDetail: string;
@@ -302,9 +310,11 @@ export interface CockpitView {
   msgPlaceholder: string;
 }
 
+// Button surfaces. The non-primary variants carry a faint fill (not pure white) so they
+// read as raised buttons, not the white-bordered chips used for passive info tags.
 const PRIMARY = { bg: "oklch(0.205 0 0)", color: "#fff", border: "none", subColor: "oklch(0.75 0 0)" };
-const SEC = { bg: "#fff", color: "oklch(0.25 0 0)", border: "1px solid oklch(0.85 0 0)", subColor: "oklch(0.6 0 0)" };
-const GHOST = { bg: "#fff", color: "oklch(0.45 0 0)", border: "1px solid oklch(0.9 0 0)", subColor: "oklch(0.65 0 0)" };
+const SEC = { bg: "oklch(0.985 0 0)", color: "oklch(0.25 0 0)", border: "1px solid oklch(0.85 0 0)", subColor: "oklch(0.6 0 0)" };
+const GHOST = { bg: "oklch(0.975 0 0)", color: "oklch(0.45 0 0)", border: "1px solid oklch(0.9 0 0)", subColor: "oklch(0.65 0 0)" };
 
 function toLabel(r: Role): string {
   return r === "rm" ? "RM" : r === "am" ? "AM" : "Compliance";
@@ -319,6 +329,18 @@ function inboxElig(c: Case): boolean {
     c.status === "decided" ||
     (c.status === "open" && c.materiality >= 40)
   );
+}
+
+// A case surfaces for a role when it is a participant in the conversation, i.e.
+// the sender or recipient of any message. This is what lets a messaged peer see
+// (and open) a case they do not own.
+function inThread(c: Case, role: Role): boolean {
+  return (c.messages || []).some((m) => m.to === role || m.from === role);
+}
+
+// An incoming message the role has not opened yet drives the unread dot.
+function hasUnreadMsg(c: Case, role: Role): boolean {
+  return (c.messages || []).some((m) => m.to === role && !m.read);
 }
 
 export interface ViewInput {
@@ -340,17 +362,17 @@ export function buildView({ role, cases, selectedId, msgTo }: ViewInput): Cockpi
   let listSubtitle = "";
   let listEmptyText = "";
   if (role === "rm") {
-    const mine = cases.filter((c) => c.owner === "rm");
+    const mine = cases.filter((c) => c.owner === "rm" || inThread(c, "rm"));
     const order = mine
       .slice()
       .sort((a, b) => (a.quiet ? 1 : 0) - (b.quiet ? 1 : 0) || b.materiality - a.materiality);
     list = order.map((c) => rowVM(c, selectedId, role));
-    listKicker = "MORNING DIGEST · FRI 20 JUN";
+    listKicker = digestLabel();
     listTitle = "Your book";
     listSubtitle = "Ranked by materiality · click a client";
     listEmptyText = "No clients in your book.";
   } else if (role === "am") {
-    const mine = cases.filter((c) => c.owner === "am");
+    const mine = cases.filter((c) => c.owner === "am" || inThread(c, "am"));
     const order = mine.slice().sort((a, b) => b.materiality - a.materiality);
     list = order.map((c) => rowVM(c, selectedId, role));
     listKicker = "STRUCTURAL WATCH";
@@ -359,7 +381,7 @@ export function buildView({ role, cases, selectedId, msgTo }: ViewInput): Cockpi
     listEmptyText = "Nothing assigned to you yet.";
   } else if (role === "compliance") {
     const inbox = cases
-      .filter(inboxElig)
+      .filter((c) => inboxElig(c) || inThread(c, "compliance"))
       .sort(
         (a, b) =>
           (a.status === "decided" ? 1 : 0) - (b.status === "decided" ? 1 : 0) ||
@@ -386,29 +408,29 @@ export function buildView({ role, cases, selectedId, msgTo }: ViewInput): Cockpi
         !c.instructionDone,
     ).length;
     nav = [
-      navItem("Morning digest", 0, true, false),
-      navItem("My clients", cases.filter((c) => c.owner === "rm").length, false, true),
-      navItem("Escalated by me", flagged, false, flagged > 0, "info"),
-      navItem("Compliance requests", instr, false, instr > 0, "warning"),
+      navItem("Morning digest", 0, false),
+      navItem("My clients", cases.filter((c) => c.owner === "rm").length, true),
+      navItem("Escalated by me", flagged, flagged > 0, "info"),
+      navItem("Compliance requests", instr, instr > 0, "warning"),
     ];
   } else if (role === "am") {
     const handed = cases.filter((c) => c.owner === "am" && c.status === "handed_to_am").length;
     const esc = cases.filter((c) => c.owner === "am" && c.status === "escalated_by_am").length;
     nav = [
-      navItem("Structural watch", 0, true, false),
-      navItem("Accounts I own", cases.filter((c) => c.owner === "am").length, false, true),
-      navItem("Handed to me", handed, false, handed > 0, "info"),
-      navItem("Escalated by me", esc, false, esc > 0, "info"),
+      navItem("Structural watch", 0, false),
+      navItem("Accounts I own", cases.filter((c) => c.owner === "am").length, true),
+      navItem("Handed to me", handed, handed > 0, "info"),
+      navItem("Escalated by me", esc, esc > 0, "info"),
     ];
   } else if (role === "compliance") {
     const need = cases.filter((c) => inboxElig(c) && c.status !== "decided").length;
     const review = cases.filter((c) => c.status === "in_compliance_review").length;
     const decided = cases.filter((c) => c.status === "decided").length;
     nav = [
-      navItem("Inbox", need, true, true, "danger"),
-      navItem("In review", review, false, review > 0, "info"),
-      navItem("Decided", decided, false, decided > 0, "success"),
-      navItem("Audit log", 0, false, false),
+      navItem("Inbox", need, true, "danger"),
+      navItem("In review", review, review > 0, "info"),
+      navItem("Decided", decided, decided > 0, "success"),
+      navItem("Audit log", 0, false),
     ];
   }
 
@@ -500,6 +522,12 @@ function outcomeFor(c: Case): { label: string; tone: ToneName; tail: string } | 
       return { label: "Added to watchlist", tone: "danger", tail: " and 1st line notified." };
     case "mlro":
       return { label: "Escalated to MLRO", tone: "info", tail: ", out of the first-line loop." };
+    case "contact_ops":
+      return {
+        label: "Reclassification recommended to Operations",
+        tone: "info",
+        tail: "; pending operations, no risk change applied.",
+      };
     case "dismiss":
       return { label: "Dismissed, no action", tone: "success", tail: "; 1st line notified." };
     default:
@@ -510,14 +538,18 @@ function outcomeFor(c: Case): { label: string; tone: ToneName; tail: string } | 
 function buildDetail(sel: Case, role: Role): DetailVM {
   const t: Tone = TONES[bandToneName(sel.band)];
   const st = statusPill(sel);
-  const rec = recVM(sel);
+  const recBase = recVM(sel);
   const ownerLabel = sel.owner === "am" ? "Account Manager (Marco)" : "Relationship Manager (Lena)";
 
   // actor buttons (first-line owner) / compliance decisions
   let actorButtons: ActorButton[] = [];
   let actionHeading = "";
+  // True only when the current viewer can still act on the first-line
+  // recommendation; drives whether the recommendation card is live or context.
+  let recActionable = false;
   if (role === "rm" && sel.owner === "rm" && (sel.status === "open" || sel.status === "reviewed")) {
     actionHeading = "YOUR MOVE · 1ST LINE";
+    recActionable = true;
     const escStyle = sel.recAction === "escalate_compliance" ? PRIMARY : SEC;
     const handStyle = sel.recAction === "handover_am" ? PRIMARY : SEC;
     actorButtons = [
@@ -527,6 +559,7 @@ function buildDetail(sel: Case, role: Role): DetailVM {
     ];
   } else if (role === "am" && sel.owner === "am" && sel.status !== "decided" && sel.status !== "escalated_by_am") {
     actionHeading = "YOUR MOVE · 1ST LINE";
+    recActionable = true;
     const escStyle = sel.recAction === "escalate_compliance" ? PRIMARY : SEC;
     actorButtons = [
       { key: "escalate", label: "Escalate to Compliance", sub: "up to 2nd line", ...escStyle },
@@ -539,11 +572,13 @@ function buildDetail(sel: Case, role: Role): DetailVM {
     const mk = (key: Decision, label: string, sub: string, tone: ToneName): ActorButton => {
       const tt = TONES[tone];
       const prim = cr === key;
+      // Non-primary decisions sit on a faint button surface and keep the tone only as the
+      // border and text accent, so they read as buttons that are colour-coded, not as tags.
       return {
         key,
         label,
         sub,
-        bg: prim ? "oklch(0.205 0 0)" : tt.bg,
+        bg: prim ? "oklch(0.205 0 0)" : "oklch(0.985 0 0)",
         color: prim ? "#fff" : tt.text,
         border: prim ? "none" : "1px solid " + tt.border,
         subColor: prim ? "oklch(0.75 0 0)" : tt.text,
@@ -554,6 +589,8 @@ function buildDetail(sel: Case, role: Role): DetailVM {
       mk("doc_request", "Request document", "down to 1st line", "warning"),
       mk("watchlist", "Add to watchlist", "log", "danger"),
       mk("mlro", "Escalate to MLRO", "up to 3rd line", "info"),
+      // A recommendation, not an automatic change: it drafts a ticket; operations makes the change.
+      mk("contact_ops", "Recommend reclassification to Operations", "drafts a ticket to ops; ops makes the change", "info"),
       mk("dismiss", "Dismiss", "no action", "neutral"),
     ];
   }
@@ -568,6 +605,39 @@ function buildDetail(sel: Case, role: Role): DetailVM {
   const out = outcomeFor(sel);
   const ot = out ? TONES[out.tone] : TONES.neutral;
   const showDecidedBanner = sel.status === "decided" && !instrPending && !instrDone;
+
+  // recommendation: live for the first-line owner who can still act on it,
+  // otherwise greyed context (already acted, or seen by Compliance).
+  let rec = recBase;
+  if (recBase.has) {
+    if (recActionable) {
+      rec = { ...recBase, mode: "actionable", kicker: "RECOMMENDED" };
+    } else if (role === "compliance") {
+      rec = {
+        ...recBase,
+        mode: "context",
+        kicker: "FIRST LINE RECOMMENDED",
+        contextNote: "Context for your decision below.",
+      };
+    } else {
+      rec = {
+        ...recBase,
+        mode: "context",
+        kicker: "ALREADY RECOMMENDED",
+        contextNote: "No action needed from you right now.",
+      };
+    }
+  }
+
+  // next-step note: when there is nothing for this viewer to click and the case
+  // is not decided, explain the state and point to the always-present conversation.
+  const hasActorButtons = actorButtons.length > 0;
+  const nextStepShow = hasActorButtons || instrPending || instrDone || showDecidedBanner ? false : true;
+  const nextStepText = !nextStepShow
+    ? ""
+    : sel.status === "flagged_by_rm" || sel.status === "escalated_by_am" || sel.status === "in_compliance_review"
+      ? "This case is now with Compliance. Awaiting their decision; add context in the conversation below."
+      : "No action required from you right now; use the conversation below if needed.";
 
   // signals
   const maxPts = Math.max.apply(null, sel.signals.length ? sel.signals.map((s) => s.pts) : [1]);
@@ -585,6 +655,7 @@ function buildDetail(sel: Case, role: Role): DetailVM {
     src: ch.src,
     dot: ch.dir === "negative" ? "#e24b4a" : ch.dir === "positive" ? "#97c459" : "oklch(0.7 0 0)",
     textColor: ch.dir === "negative" ? "#501313" : "oklch(0.25 0 0)",
+    url: ch.url,
   }));
 
   // thread
@@ -606,6 +677,7 @@ function buildDetail(sel: Case, role: Role): DetailVM {
   });
 
   return {
+    caseId: sel.id,
     client: sel.client,
     lei: sel.lei,
     sector: sel.sector,
@@ -625,12 +697,16 @@ function buildDetail(sel: Case, role: Role): DetailVM {
     materiality: sel.materiality,
     matPct: sel.materiality + "%",
     signals,
+    signalsEmpty: signals.length === 0,
     changes,
+    changesEmpty: changes.length === 0,
     facts: sel.facts,
+    factsEmpty: sel.facts.length === 0,
     rec,
-    hasActorButtons: actorButtons.length > 0,
+    hasActorButtons,
     actionHeading,
     actorButtons,
+    nextStep: { show: nextStepShow, text: nextStepText },
     instructionPending: instrPending,
     instructionLabel: im ? im.label : "",
     instructionDetail: im ? im.detail : "",

@@ -1,7 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { renderDetail, viewFor, follows, flagged, decided } from "@/test/cockpit-helpers";
+import { buildView } from "@/lib/cockpit-view";
+import { seedCases } from "@/lib/cockpit-seed";
+import type { Case } from "@/lib/cockpit-types";
+import { renderDetail, viewFor, follows, flagged, decided, emptied } from "@/test/cockpit-helpers";
 
 describe("CaseDetail", () => {
   it("renders the client header with identifiers and the risk band delta", () => {
@@ -111,5 +114,58 @@ describe("CaseDetail", () => {
     renderDetail(viewFor("rm", "alpenrose"));
     expect(screen.getByText(/No messages yet/)).toBeInTheDocument();
     expect(screen.getByText("Nothing logged yet.")).toBeInTheDocument();
+  });
+
+  it("greys an already-escalated recommendation and explains there is nothing to click", () => {
+    renderDetail(viewFor("rm", "helvetia")); // seeded flagged_by_rm
+    expect(screen.getByText("ALREADY RECOMMENDED")).toBeInTheDocument();
+    expect(screen.getByText(/No action needed from you/)).toBeInTheDocument();
+    expect(screen.getByText(/Awaiting their decision/)).toBeInTheDocument();
+    // The live, full-colour "RECOMMENDED" kicker must not appear.
+    expect(screen.queryByText("RECOMMENDED")).toBeNull();
+  });
+
+  it("shows the first-line recommendation to Compliance as context above the live decisions", () => {
+    renderDetail(viewFor("compliance", "helvetia", flagged("helvetia")));
+    expect(screen.getByText("FIRST LINE RECOMMENDED")).toBeInTheDocument();
+    expect(screen.getByText(/Context for your decision below/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Require Re-KYC/ })).toBeInTheDocument();
+  });
+
+  it("shows placeholders for empty drift, change and fact sections", () => {
+    renderDetail(viewFor("rm", "castor", emptied("castor")));
+    expect(screen.getByText("No drift signals detected.")).toBeInTheDocument();
+    expect(screen.getByText("No changes recorded.")).toBeInTheDocument();
+    expect(screen.getByText("No key facts on file.")).toBeInTheDocument();
+  });
+
+  it("copies the case id when the copy button is clicked", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    renderDetail(viewFor("rm", "helvetia"));
+    expect(screen.getByText("ID helvetia")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Copy case ID" }));
+    expect(writeText).toHaveBeenCalledWith("helvetia");
+  });
+
+  it("renders a cited source as a link when the change carries a url", () => {
+    const withUrl: Case[] = seedCases().map((c) =>
+      c.id === "helvetia"
+        ? {
+            ...c,
+            changes: [
+              { dir: "negative", text: "Probe reported", src: "Alpine Wire · 18 Jun", url: "/sources/helvetia-probe.html" },
+              { dir: "neutral", text: "Office unchanged", src: "Internal note · no link" },
+            ],
+          }
+        : c,
+    );
+    const view = buildView({ role: "rm", cases: withUrl, selectedId: "helvetia", msgTo: "am" });
+    renderDetail(view);
+    const link = screen.getByRole("link", { name: /Alpine Wire · 18 Jun/ });
+    expect(link).toHaveAttribute("href", "/sources/helvetia-probe.html");
+    // The change without a url stays plain text, not a link.
+    expect(screen.getByText("Internal note · no link")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Internal note · no link" })).toBeNull();
   });
 });

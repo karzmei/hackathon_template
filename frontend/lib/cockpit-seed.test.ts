@@ -48,6 +48,17 @@ describe("seedCases", () => {
     }
   });
 
+  it("only recommends no action on quiet LOW-band cases", () => {
+    // Guards the contradictory state of a HIGH/MEDIUM-risk case telling the user
+    // to take no action; a "monitor" recommendation must be a genuinely quiet case.
+    for (const c of cases) {
+      if (c.recAction === "monitor") {
+        expect(c.band).toBe("LOW");
+        expect(c.quiet).toBe(true);
+      }
+    }
+  });
+
   it("gives every case a well-formed shape", () => {
     for (const c of cases) {
       expect(c.client.length).toBeGreaterThan(0);

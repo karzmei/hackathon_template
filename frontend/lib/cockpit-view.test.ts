@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { seedCases } from "@/lib/cockpit-seed";
 import { bandToneName, buildView, navItem, statusPill, recVM, rowVM } from "@/lib/cockpit-view";
 import { TONES } from "@/lib/cockpit-types";
-import { find, decided, flagged } from "@/test/cockpit-helpers";
+import { find, decided, flagged, emptied } from "@/test/cockpit-helpers";
 
 describe("bandToneName", () => {
   it("maps each risk band to its semantic tone", () => {
@@ -109,22 +109,20 @@ describe("rowVM", () => {
 });
 
 describe("navItem", () => {
-  it("uses an active style and no count when inactive count is hidden", () => {
-    const item = navItem("Morning digest", 0, true, false);
-    expect(item.active).toBe(true);
+  it("hides the count when showCount is false", () => {
+    const item = navItem("Morning digest", 0, false);
     expect(item.hasCount).toBe(false);
-    expect(item.bg).toBe("#fff");
   });
 
   it("applies the count tone colours when given", () => {
-    const item = navItem("Inbox", 3, true, true, "danger");
+    const item = navItem("Inbox", 3, true, "danger");
     expect(item.hasCount).toBe(true);
     expect(item.countBg).toBe(TONES.danger.bg);
     expect(item.countColor).toBe(TONES.danger.text);
   });
 
   it("falls back to the dark count chip without a tone", () => {
-    const item = navItem("My clients", 5, false, true);
+    const item = navItem("My clients", 5, true);
     expect(item.countBg).toBe("oklch(0.205 0 0)");
     expect(item.countColor).toBe("#fff");
   });
@@ -242,10 +240,10 @@ describe("buildView detail assembly", () => {
     expect(keys).toEqual(["escalate", "handback", "reviewed"]);
   });
 
-  it("offers the five Compliance decisions on an undecided case", () => {
+  it("offers the Compliance decisions on an undecided case", () => {
     const view = buildView({ role: "compliance", cases: flagged("helvetia"), selectedId: "helvetia", msgTo: "rm" });
     const keys = view.detail?.actorButtons.map((b) => b.key);
-    expect(keys).toEqual(["re_kyc", "doc_request", "watchlist", "mlro", "dismiss"]);
+    expect(keys).toEqual(["re_kyc", "doc_request", "watchlist", "mlro", "contact_ops", "dismiss"]);
   });
 
   it("offers no actor buttons on a decided case", () => {
@@ -289,6 +287,64 @@ describe("buildView detail assembly", () => {
     expect(view.detail?.instructionPending).toBe(false);
     expect(view.detail?.outcomeLabel).toBe("Re-KYC required");
   });
+
+  it("marks the recommendation actionable for the first-line owner of an open case", () => {
+    const view = buildView({ role: "rm", cases, selectedId: "castor", msgTo: "am" });
+    expect(view.detail?.rec.mode).toBe("actionable");
+    expect(view.detail?.rec.kicker).toBe("RECOMMENDED");
+  });
+
+  it("greys the recommendation to context once the owner has already escalated", () => {
+    const view = buildView({ role: "rm", cases, selectedId: "helvetia", msgTo: "am" }); // seeded flagged
+    expect(view.detail?.rec.mode).toBe("context");
+    expect(view.detail?.rec.kicker).toBe("ALREADY RECOMMENDED");
+    expect(view.detail?.rec.contextNote).toMatch(/No action needed from you/);
+  });
+
+  it("shows the first-line recommendation to Compliance as context, not a live action", () => {
+    const view = buildView({ role: "compliance", cases: flagged("helvetia"), selectedId: "helvetia", msgTo: "rm" });
+    expect(view.detail?.rec.mode).toBe("context");
+    expect(view.detail?.rec.kicker).toBe("FIRST LINE RECOMMENDED");
+  });
+
+  it("never leaves a decided case showing a live recommendation", () => {
+    const view = buildView({ role: "rm", cases: decided("helvetia", "re_kyc"), selectedId: "helvetia", msgTo: "am" });
+    expect(view.detail?.rec.mode).toBe("context");
+  });
+
+  it("offers a next-step note while the owner waits on Compliance", () => {
+    const view = buildView({ role: "rm", cases, selectedId: "helvetia", msgTo: "am" }); // seeded flagged
+    expect(view.detail?.hasActorButtons).toBe(false);
+    expect(view.detail?.nextStep.show).toBe(true);
+    expect(view.detail?.nextStep.text).toMatch(/Awaiting their decision/);
+  });
+
+  it("suppresses the next-step note when there are buttons or a decided banner", () => {
+    const withButtons = buildView({ role: "compliance", cases: flagged("helvetia"), selectedId: "helvetia", msgTo: "rm" });
+    expect(withButtons.detail?.hasActorButtons).toBe(true);
+    expect(withButtons.detail?.nextStep.show).toBe(false);
+
+    const decidedView = buildView({
+      role: "compliance",
+      cases: decided("helvetia", "watchlist"),
+      selectedId: "helvetia",
+      msgTo: "rm",
+    });
+    expect(decidedView.detail?.decidedBanner).toBe(true);
+    expect(decidedView.detail?.nextStep.show).toBe(false);
+  });
+
+  it("flags empty drift sections so the UI can show placeholders", () => {
+    const empty = buildView({ role: "rm", cases: emptied("castor"), selectedId: "castor", msgTo: "am" });
+    expect(empty.detail?.signalsEmpty).toBe(true);
+    expect(empty.detail?.changesEmpty).toBe(true);
+    expect(empty.detail?.factsEmpty).toBe(true);
+
+    const full = buildView({ role: "rm", cases, selectedId: "castor", msgTo: "am" });
+    expect(full.detail?.signalsEmpty).toBe(false);
+    expect(full.detail?.changesEmpty).toBe(false);
+    expect(full.detail?.factsEmpty).toBe(false);
+  });
 });
 
 describe("buildView role gating and recipients", () => {
@@ -316,5 +372,57 @@ describe("buildView role gating and recipients", () => {
     const view = buildView({ role: "compliance", cases: seedCases(), selectedId: null, msgTo: "rm" });
     expect(view.inboxCount).toBe(1); // only Helvetia is seeded unread
     expect(view.hasInboxUnread).toBe(true);
+  });
+});
+
+describe("buildView surfaces messaged cases to the recipient", () => {
+  // A message addressed to a role pulls the case into that role's list even when
+  // the role does not own it, and pulses it unread until the recipient opens it.
+  it("an RM -> AM message surfaces the RM-owned case in the AM list, unread", () => {
+    const cases = seedCases().map((c) =>
+      c.id === "castor" // RM-owned
+        ? { ...c, messages: [{ from: "rm" as const, to: "am" as const, text: "Take a look.", ts: "20 Jun 09:00" }] }
+        : c,
+    );
+    const view = buildView({ role: "am", cases, selectedId: null, msgTo: "rm" });
+    const row = view.list.find((r) => r.id === "castor");
+    expect(row).toBeDefined(); // visible despite owner === "rm"
+    expect(row?.unread).toBe(true);
+  });
+
+  it("clears the unread dot once the message is marked read", () => {
+    const cases = seedCases().map((c) =>
+      c.id === "castor"
+        ? {
+            ...c,
+            messages: [{ from: "rm" as const, to: "am" as const, text: "Take a look.", ts: "20 Jun 09:00", read: true }],
+          }
+        : c,
+    );
+    const row = buildView({ role: "am", cases, selectedId: null, msgTo: "rm" }).list.find((r) => r.id === "castor");
+    expect(row).toBeDefined();
+    expect(row?.unread).toBe(false);
+  });
+
+  it("an AM -> RM message surfaces the AM-owned case in the RM list, unread", () => {
+    const cases = seedCases().map((c) =>
+      c.id === "nordwind" // AM-owned
+        ? { ...c, messages: [{ from: "am" as const, to: "rm" as const, text: "Your call.", ts: "20 Jun 09:00" }] }
+        : c,
+    );
+    const row = buildView({ role: "rm", cases, selectedId: null, msgTo: "am" }).list.find((r) => r.id === "nordwind");
+    expect(row).toBeDefined();
+    expect(row?.unread).toBe(true);
+  });
+
+  it("does not mark the sender's own row unread", () => {
+    const cases = seedCases().map((c) =>
+      c.id === "castor"
+        ? { ...c, messages: [{ from: "rm" as const, to: "am" as const, text: "Take a look.", ts: "20 Jun 09:00" }] }
+        : c,
+    );
+    // Lena sent it; for the RM the case is owned anyway but must not pulse unread.
+    const row = buildView({ role: "rm", cases, selectedId: null, msgTo: "am" }).list.find((r) => r.id === "castor");
+    expect(row?.unread).toBe(false);
   });
 });

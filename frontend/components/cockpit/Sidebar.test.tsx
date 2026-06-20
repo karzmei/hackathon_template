@@ -35,17 +35,21 @@ describe("Sidebar", () => {
     expect(within(row("Morning digest")).queryByText("0")).toBeNull();
   });
 
-  it("weights the active item and leaves the others lighter", () => {
-    render(<Sidebar nav={navFor("rm")} />);
-    expect(row("Morning digest").style.fontWeight).toBe("500"); // active
-    expect(row("My clients").style.fontWeight).toBe("400"); // inactive
+  it("renders the overview items as informative, non-interactive rows", () => {
+    render(<Sidebar nav={navFor("am")} />);
+    expect(screen.getByText("OVERVIEW")).toBeInTheDocument();
+    for (const label of ["Accounts I own", "Handed to me", "Escalated by me"]) {
+      // No button/link wrapper: the row is display-only, not clickable.
+      expect(screen.getByText(label).closest("button")).toBeNull();
+      expect(screen.getByText(label).closest("a")).toBeNull();
+    }
   });
 
-  it("always renders the lines-of-defence legend and the cross-window notice", () => {
+  it("always renders the lines-of-defence legend and the live-sync indicator", () => {
     render(<Sidebar nav={navFor("am")} />);
     expect(screen.getByText("LINES OF DEFENCE")).toBeInTheDocument();
     expect(screen.getByText("1st · RM + AM (business)")).toBeInTheDocument();
     expect(screen.getByText("2nd · Compliance (control)")).toBeInTheDocument();
-    expect(screen.getByText(/SHARED CASE STATE/)).toBeInTheDocument();
+    expect(screen.getByText(/SYNCED ACROSS THE TEAM/)).toBeInTheDocument();
   });
 });

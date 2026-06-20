@@ -102,6 +102,44 @@ export interface CostToday {
   alerts: number;
 }
 
+// The cascade stages, cheapest to most expensive: step1 rules (no LLM), step2
+// reasoning filter (mid-tier deployment), step3 deep analysis (deep deployment).
+export type Stage = "rules" | "reasoning" | "deep";
+
+export interface StageCost {
+  stage: Stage;
+  label: string;
+  model: string | null; // deployment used; null for the no-LLM rules stage
+  entered: number; // alerts that entered this stage
+  survived: number; // how many passed through to the next stage
+  tokens_in: number;
+  tokens_out: number;
+  usd: number;
+}
+
+export interface ClientCost {
+  client_id: string;
+  client_name: string;
+  depth: number; // analysis_depth reached: 1, 2, or 3
+  band: string; // final risk band, e.g. "high"
+  tokens_in: number;
+  tokens_out: number;
+  usd: number;
+}
+
+// The shared cost dashboard payload: the per-stage cascade funnel, the per-client
+// breakdown, and the efficiency ratios that show spend concentrating where it matters.
+export interface CostDashboard {
+  generated_at: string;
+  totals: CostToday;
+  by_stage: StageCost[]; // ordered rules -> reasoning -> deep
+  by_client: ClientCost[];
+  usd_per_alert: number;
+  actionable_alerts: number; // count of high-band / re-KYC / escalate outcomes
+  usd_per_actionable: number; // spend that produced an actionable case
+  cheap_exits: number; // alerts resolved at step1 for ~$0
+}
+
 // Bound every request so a missing or slow backend fails fast and the data layer
 // can fall back to mocks, instead of hanging on a dead localhost connection.
 const REQUEST_TIMEOUT_MS = 700;
@@ -150,4 +188,5 @@ export const api = {
       body: JSON.stringify({ action, reason, actor: "analyst" }),
     }),
   costToday: () => request<CostToday>("/api/cost/today"),
+  costDashboard: () => request<CostDashboard>("/api/cost/dashboard"),
 };

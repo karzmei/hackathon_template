@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { CockpitView } from "@/lib/cockpit-view";
 
 // Top chrome: brand, the Compliance inbox pill (with unread pulse), the role badge
@@ -10,7 +11,14 @@ export function AppHeader({ view, onLogout }: { view: CockpitView; onLogout: () 
       className="flex h-14 flex-none items-center justify-between border-b bg-white px-[18px]"
       style={{ borderColor: "oklch(0.922 0 0)" }}
     >
-      <div className="flex items-center gap-[11px]">
+      <button
+        type="button"
+        onClick={onLogout}
+        aria-label="DRIFTWATCH home"
+        className="flex cursor-pointer items-center gap-[11px]"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element -- static brand mark, no optimisation needed */}
+        <img src="/driftwatch-icon-compact.svg" alt="" className="h-7 w-7" />
         <div className="font-mono text-xs font-medium" style={{ letterSpacing: "0.26em" }}>
           DRIFTWATCH
         </div>
@@ -20,7 +28,7 @@ export function AppHeader({ view, onLogout }: { view: CockpitView; onLogout: () 
         >
           COCKPIT
         </div>
-      </div>
+      </button>
       <div className="flex items-center gap-[14px]">
         {view.isCompliance && (
           <div className="flex items-center gap-[7px] text-[12.5px]" style={{ color: "oklch(0.42 0 0)" }}>
@@ -60,6 +68,13 @@ export function AppHeader({ view, onLogout }: { view: CockpitView; onLogout: () 
             </div>
           </div>
         </div>
+        <Link
+          href="/dashboard"
+          className="cursor-pointer rounded-lg border bg-white px-[11px] py-[7px] font-mono text-[10px]"
+          style={{ letterSpacing: "0.12em", color: "oklch(0.5 0 0)", borderColor: "oklch(0.9 0 0)" }}
+        >
+          COST
+        </Link>
         <button
           onClick={onLogout}
           className="cursor-pointer rounded-lg border bg-white px-[11px] py-[7px] font-mono text-[10px]"

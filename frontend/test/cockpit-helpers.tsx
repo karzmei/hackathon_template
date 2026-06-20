@@ -64,3 +64,7 @@ export const handedToAm = (id: string): Case[] =>
 export const reviewed = (id: string): Case[] => mutate(id, { status: "reviewed" });
 
 export const withMateriality = (id: string, materiality: number): Case[] => mutate(id, { materiality });
+
+// A case stripped of its drift signals, change timeline and key facts, for
+// exercising the empty-section placeholders.
+export const emptied = (id: string): Case[] => mutate(id, { signals: [], changes: [], facts: [] });

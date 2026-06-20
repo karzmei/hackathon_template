@@ -18,14 +18,14 @@ describe("Cockpit page (end-to-end journeys)", () => {
   it("FJ1: opens on the seat picker and an RM lands on their ranked book", async () => {
     render(<Cockpit />);
 
-    expect(await screen.findByText(/Who's on shift\?/)).toBeInTheDocument();
+    expect(await screen.findByText(/Select your role/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /Lena Brunner/ }));
 
     expect(await screen.findByText("Your book")).toBeInTheDocument();
     // The RM book lists owned clients; the high-materiality cases are present.
     expect(screen.getByRole("button", { name: /Castor Mining Ltd/ })).toBeInTheDocument();
-    // No case open yet, so the detail pane prompts for a selection.
-    expect(screen.getByText("Select a case to open it.")).toBeInTheDocument();
+    // The cockpit lands on the top-ranked case so the detail pane opens populated.
+    expect(await screen.findByRole("heading", { name: "Helvetia Capital AG" })).toBeInTheDocument();
   });
 
   it("FJ2: an RM escalates a case, status flips and the audit trail grows", async () => {
@@ -59,12 +59,39 @@ describe("Cockpit page (end-to-end journeys)", () => {
     expect(screen.getByText(/Required Re-KYC \(instruction to 1st line\)/)).toBeInTheDocument();
   });
 
+  it("contact_ops opens the Ops draft modal; Send recommends without changing the risk band", async () => {
+    render(<Cockpit />);
+
+    await userEvent.click(await screen.findByRole("button", { name: /Sofia Keller/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /Helvetia Capital AG/ }));
+    expect(await screen.findByRole("heading", { name: "Helvetia Capital AG" })).toBeInTheDocument();
+    // Helvetia is seeded HIGH; the band must be unchanged by recommending to Operations.
+    expect(screen.getByText("HIGH RISK")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /Recommend reclassification to Operations/ }));
+
+    // The modal opens with a prefilled draft.
+    const dialog = await screen.findByRole("dialog", { name: "Draft message to Operations" });
+    expect(dialog).toBeInTheDocument();
+    const draft = screen.getByRole("textbox", { name: "Draft message" });
+    expect((draft as HTMLTextAreaElement).value).toMatch(/Helvetia Capital AG/);
+    expect((draft as HTMLTextAreaElement).value).toMatch(/HIGH/);
+
+    await userEvent.click(screen.getByRole("button", { name: "Send" }));
+
+    // The status pill reflects the recommendation, the band is unchanged, and the
+    // drafted text is written to the audit trail.
+    expect((await screen.findAllByText(/pending operations/i)).length).toBeGreaterThan(0);
+    expect(screen.getByText("HIGH RISK")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Draft message to Operations" })).toBeNull();
+  });
+
   it("returns to the seat picker on SWITCH ROLE", async () => {
     render(<Cockpit />);
     await userEvent.click(await screen.findByRole("button", { name: /Marco Reuss/ }));
     expect(await screen.findByText("Accounts you own")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "SWITCH ROLE" }));
-    expect(await screen.findByRole("heading", { name: /Who's on shift\?/ })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /Select your role/ })).toBeInTheDocument();
   });
 });

@@ -1,0 +1,237 @@
+{
+  "client_id": "client_helvetia_analytics_ag",
+  "entity_type": "corporate",
+  "record_version": 1,
+  "last_updated": "2026-06-20T10:00:00",
+  "internal": {
+    "identification": {
+      "legal_name": "Helvetia Analytics AG",
+      "trade_names": [
+        "Helvetia Analytics"
+      ],
+      "registration_number": "CHE-321.654.987",
+      "legal_form": "AG",
+      "jurisdiction_of_incorporation": "CH",
+      "incorporation_date": "2018-04-12",
+      "industry_codes": [
+        {
+          "scheme": "NOGA",
+          "code": "6201",
+          "description": "Computer programming activities",
+          "primary": true
+        },
+        {
+          "scheme": "NOGA",
+          "code": "6311",
+          "description": "Data processing, hosting and related activities",
+          "primary": false
+        }
+      ],
+      "sectors": [
+        "B2B SaaS",
+        "Logistics software",
+        "Data analytics"
+      ],
+      "is_publicly_listed": false,
+      "listings": []
+    },
+    "kyc_baseline": {
+      "expected_business_model": "Helvetia Analytics AG provides subscription-based analytics software for logistics and supply-chain companies. The company sells SaaS licenses and implementation support to corporate clients in Switzerland and neighboring European markets. No cryptoasset services, brokerage, custody, payment processing, or financial intermediation are expected.",
+      "business_activity_tags": [
+        "saas",
+        "logistics_analytics",
+        "supply_chain_software",
+        "b2b_software"
+      ],
+      "expected_countries_of_operation": [
+        "CH",
+        "DE",
+        "AT"
+      ],
+      "expected_monthly_txn_volume_chf": "250000.00",
+      "expected_monthly_txn_count": 45,
+      "expected_avg_txn_size_chf": "5555.56",
+      "expected_counterparty_countries": [
+        "CH",
+        "DE",
+        "AT"
+      ],
+      "source_of_funds": [
+        "software_subscription_revenue",
+        "implementation_services"
+      ],
+      "source_of_funds_other": null,
+      "source_of_wealth": [
+        "founder_equity",
+        "retained_earnings"
+      ],
+      "source_of_wealth_other": null,
+      "customer_risk_rating": "low",
+      "risk_rating_factors": [
+        "Swiss incorporated operating company",
+        "B2B SaaS business model",
+        "Expected counterparties in low-risk jurisdictions",
+        "No expected cryptoasset or regulated financial activity"
+      ],
+      "risk_rating_notes": "Client onboarded as a low-risk Swiss software company. Expected activity is limited to SaaS revenue and implementation fees.",
+      "onboarding_date": "2023-02-15",
+      "last_kyc_review_date": "2026-02-10",
+      "next_kyc_review_due": "2027-02-10"
+    },
+    "ownership": {
+      "beneficial_owners": [
+        {
+          "name": "Claudia Meier",
+          "ownership_pct": 55.0,
+          "nationalities": [
+            "CH"
+          ],
+          "is_pep": false
+        },
+        {
+          "name": "Jonas Keller",
+          "ownership_pct": 30.0,
+          "nationalities": [
+            "CH"
+          ],
+          "is_pep": false
+        }
+      ],
+      "shareholders_on_file": [
+        {
+          "name": "Claudia Meier",
+          "ownership_pct": 55.0
+        },
+        {
+          "name": "Jonas Keller",
+          "ownership_pct": 30.0
+        },
+        {
+          "name": "Alpine Seed Ventures AG",
+          "ownership_pct": 15.0
+        }
+      ],
+      "directors_officers": [
+        {
+          "name": "Claudia Meier",
+          "roles": [
+            "CEO",
+            "Board Member"
+          ]
+        },
+        {
+          "name": "Jonas Keller",
+          "roles": [
+            "CTO",
+            "Board Member"
+          ]
+        }
+      ],
+      "ownership_structure_complexity": "simple"
+    },
+    "account_info": {
+      "account_type": "corporate_operating_account",
+      "account_open_date": "2023-02-20",
+      "products_held": [
+        "CHF business account",
+        "EUR business account",
+        "domestic payments",
+        "SEPA payments"
+      ],
+      "relationship_manager": "RM_Sofia_Brunner"
+    },
+    "aml_monitoring": {
+      "recent_monthly_txn_volume_chf": "242000.00",
+      "recent_monthly_txn_count": 43,
+      "cross_border_txn_ratio_pct": 28.0,
+      "top_counterparty_countries": [
+        "CH",
+        "DE",
+        "AT"
+      ],
+      "txn_velocity_30d_vs_baseline_pct": 96.8,
+      "large_single_txn_count_30d": 0,
+      "structuring_pattern_flag": false,
+      "dormancy_status": "active",
+      "days_since_last_activity": 3,
+      "screening_status": {
+        "sanctions_match": false,
+        "pep_status": false,
+        "last_screened_date": "2026-06-18"
+      }
+    },
+    "compliance_status": {
+      "edd_required": false,
+      "edd_reasons": [],
+      "open_investigations": 0,
+      "sars_filed_count_lifetime": 0,
+      "account_restrictions": []
+    }
+  },
+  "external": {
+    "legal_registry": {
+      "current_legal_name": "Helvetia Analytics AG",
+      "current_legal_form": "AG",
+      "registered_address": "Technoparkstrasse 1, 8005 Zürich, Switzerland",
+      "registry_source": "Synthetic Swiss commercial register snapshot",
+      "last_registry_check": "2026-06-01",
+      "shareholders_on_record": [
+        "Claudia Meier",
+        "Jonas Keller",
+        "Alpine Seed Ventures AG"
+      ],
+      "filing_status": "active"
+    },
+    "news": [],
+    "web_presence": {
+      "current_domain": "helvetia-analytics.example",
+      "domain_registration_date": "2018-05-03",
+      "last_domain_change_date": null,
+      "website_content_hash": "sha256:initial_saas_profile_v1",
+      "last_content_change_date": "2026-02-08",
+      "whois_registrant_org": "Helvetia Analytics AG",
+      "hosting_country": "CH"
+    },
+    "corporate_events": [
+      {
+        "event_type": "seed_round",
+        "date": "2021-09-15",
+        "description": "Synthetic seed funding round from Alpine Seed Ventures AG.",
+        "source": "Synthetic corporate records",
+        "amount_chf": "1200000.00"
+      }
+    ],
+    "linked_entities": [],
+    "geopolitical_signals": [],
+    "sanctions_adverse_media_screening": {
+      "ofac_match": false,
+      "eu_sanctions_match": false,
+      "un_sanctions_match": false,
+      "adverse_media_hits_30d": 0,
+      "last_screened": "2026-06-18"
+    },
+    "market_signals": {
+      "employee_count_estimate": 38,
+      "employee_count_trend_90d_pct": 4.5,
+      "social_media_activity_level": "normal",
+      "linkedin_url": "https://linkedin.example/helvetia-analytics-ag",
+      "headquarters_location_reported": "Zürich, Switzerland"
+    }
+  },
+  "derived": {
+    "digest_facts": [],
+    "suggested_actions": [],
+    "watchlist_status": "not_on_watchlist",
+    "digest_batch_id": "seed_batch_2026_06_20",
+    "digest_date": "2026-06-20",
+    "pipeline_run": {
+      "stage_reached": 0,
+      "tokens_input": 0,
+      "tokens_output": 0,
+      "model_calls": 0,
+      "processed_in_region": "CH",
+      "processing_time_ms": 0,
+      "evaluated_no_alert": []
+    }
+  }
+}

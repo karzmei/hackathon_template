@@ -19,6 +19,8 @@ playwright-report/
 
 # Misc
 .DS_Store
+# Stray downloaded archives (e.g. "files (1).zip")
+*.zip
 .claude/*
 # Share project agent skills with the team; keep personal Claude config local
 !.claude/skills/

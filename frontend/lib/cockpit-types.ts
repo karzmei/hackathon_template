@@ -25,6 +25,7 @@ export type Decision =
   | "doc_request"
   | "watchlist"
   | "mlro"
+  | "contact_ops"
   | "dismiss";
 
 // First-line recommendation surfaced on the case before any action is taken.
@@ -39,6 +40,8 @@ export interface CaseChange {
   dir: "negative" | "positive" | "neutral";
   text: string;
   src: string;
+  // Optional cited source link; when present the timeline renders src as a link.
+  url?: string;
 }
 
 export interface CaseMessage {
@@ -46,6 +49,9 @@ export interface CaseMessage {
   to: Role;
   text: string;
   ts: string;
+  // Whether the recipient (m.to) has opened the case since this arrived. Undefined
+  // means unread; set true when the recipient selects the case.
+  read?: boolean;
 }
 
 export interface CaseAuditEntry {

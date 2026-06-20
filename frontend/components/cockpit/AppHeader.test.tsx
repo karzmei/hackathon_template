@@ -38,10 +38,23 @@ describe("AppHeader", () => {
     expect(screen.queryByLabelText("unread escalations")).toBeNull();
   });
 
+  it("links to the shared cost dashboard", () => {
+    render(<AppHeader view={headerView("rm")} onLogout={() => {}} />);
+    const link = screen.getByRole("link", { name: "COST" });
+    expect(link).toHaveAttribute("href", "/dashboard");
+  });
+
   it("invokes onLogout when SWITCH ROLE is clicked", async () => {
     const onLogout = vi.fn();
     render(<AppHeader view={headerView("am")} onLogout={onLogout} />);
     await userEvent.click(screen.getByRole("button", { name: "SWITCH ROLE" }));
+    expect(onLogout).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns to the seat picker when the brand logo is clicked", async () => {
+    const onLogout = vi.fn();
+    render(<AppHeader view={headerView("rm")} onLogout={onLogout} />);
+    await userEvent.click(screen.getByRole("button", { name: "DRIFTWATCH home" }));
     expect(onLogout).toHaveBeenCalledTimes(1);
   });
 });

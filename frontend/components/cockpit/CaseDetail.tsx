@@ -1,10 +1,71 @@
 "use client";
 
+import { useState } from "react";
+import {
+  ArrowDown,
+  ArrowRight,
+  ArrowUp,
+  Check,
+  Copy,
+  ExternalLink,
+  Flag,
+  Send,
+  type LucideIcon,
+} from "lucide-react";
+
 import type { Role } from "@/lib/cockpit-types";
 import type { DetailVM, RecipientVM } from "@/lib/cockpit-view";
+import { copyToClipboard } from "@/lib/utils";
 
 const KICKER = "font-mono text-[10px]";
 const KICKER_STYLE = { letterSpacing: "0.14em", color: "oklch(0.5 0 0)" } as const;
+
+// Action icon by button key; reinforces the case-flow metaphor (up = escalate,
+// sideways = handover, down = back to 1st line) and marks these as buttons, not tags.
+const ACTION_ICON: Record<string, LucideIcon> = {
+  escalate: ArrowUp,
+  mlro: ArrowUp,
+  handover: ArrowRight,
+  handback: ArrowRight,
+  re_kyc: ArrowDown,
+  doc_request: ArrowDown,
+  watchlist: Flag,
+  contact_ops: Send,
+  reviewed: Check,
+  dismiss: Check,
+};
+
+// The case id as a small monospace label with a copy-to-clipboard button; the icon
+// flips to a check briefly after a successful copy.
+function CaseIdCopy({ caseId }: { caseId: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    try {
+      await copyToClipboard(caseId);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1200);
+    } catch {
+      // ignore clipboard failures; the id stays visible to copy by hand
+    }
+  }
+
+  const Icon = copied ? Check : Copy;
+  return (
+    <span className="mt-[5px] flex items-center gap-[6px] font-mono text-[10px]" style={{ color: "oklch(0.6 0 0)" }}>
+      <span>ID {caseId}</span>
+      <button
+        type="button"
+        onClick={handleCopy}
+        aria-label="Copy case ID"
+        className="flex cursor-pointer items-center rounded-[5px] border-none bg-transparent p-[2px]"
+        style={{ color: copied ? "#3f7a1f" : "oklch(0.55 0 0)" }}
+      >
+        <Icon size={12} strokeWidth={2} aria-hidden />
+      </button>
+    </span>
+  );
+}
 
 export interface CaseDetailProps {
   detail: DetailVM;
@@ -44,6 +105,7 @@ export function CaseDetail({
           <div className="mt-[5px] font-mono text-[10.5px]" style={{ color: "oklch(0.556 0 0)" }}>
             LEI {d.lei} · {d.sector} · {d.domicile}
           </div>
+          <CaseIdCopy caseId={d.caseId} />
         </div>
         <div className="flex flex-none items-center gap-2">
           {d.showDelta && (
@@ -57,7 +119,7 @@ export function CaseDetail({
             </>
           )}
           <span
-            className="rounded-[7px] border px-[9px] py-1 font-mono text-[11.5px] font-semibold"
+            className="cursor-default rounded-[7px] border px-[9px] py-1 font-mono text-[11.5px] font-semibold"
             style={{ background: d.bandBg, color: d.bandColor, borderColor: d.bandBorder }}
           >
             {d.band} RISK
@@ -67,13 +129,13 @@ export function CaseDetail({
 
       <div className="mt-[13px] flex flex-wrap items-center gap-2">
         <span
-          className="inline-block rounded-full border px-3 py-[3px] text-xs"
+          className="inline-block cursor-default rounded-full border px-3 py-[3px] text-xs"
           style={{ background: d.statusBg, color: d.statusColor, borderColor: d.statusBorder }}
         >
           {d.statusText}
         </span>
         <span
-          className="rounded-full border px-[9px] py-[3px] font-mono text-[10px]"
+          className="cursor-default rounded-full border px-[9px] py-[3px] font-mono text-[10px]"
           style={{ color: "oklch(0.5 0 0)", background: "oklch(0.96 0 0)", borderColor: "oklch(0.92 0 0)" }}
         >
           Owner · {d.ownerLabel}
@@ -114,6 +176,11 @@ export function CaseDetail({
             </div>
           </div>
         ))}
+        {d.signalsEmpty && (
+          <div className="text-xs" style={{ color: "oklch(0.6 0 0)" }}>
+            No drift signals detected.
+          </div>
+        )}
       </div>
 
       {/* What changed (source-cited timeline) */}
@@ -129,11 +196,29 @@ export function CaseDetail({
                 {ch.text}
               </div>
               <div className="mt-[3px] font-mono text-[10px]" style={{ color: "oklch(0.6 0 0)" }}>
-                {ch.src}
+                {ch.url ? (
+                  <a
+                    href={ch.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-[4px] underline"
+                    style={{ color: "oklch(0.45 0 0)" }}
+                  >
+                    {ch.src}
+                    <ExternalLink size={10} strokeWidth={2} aria-hidden />
+                  </a>
+                ) : (
+                  ch.src
+                )}
               </div>
             </div>
           </div>
         ))}
+        {d.changesEmpty && (
+          <div className="text-xs" style={{ color: "oklch(0.6 0 0)" }}>
+            No changes recorded.
+          </div>
+        )}
       </div>
 
       {/* Key facts */}
@@ -144,35 +229,60 @@ export function CaseDetail({
         {d.facts.map((f) => (
           <div
             key={f}
-            className="rounded-lg border px-[11px] py-2 text-[12.5px]"
+            className="cursor-default rounded-lg border px-[11px] py-2 text-[12.5px]"
             style={{ color: "oklch(0.35 0 0)", background: "oklch(0.97 0 0)", borderColor: "oklch(0.93 0 0)" }}
           >
             {f}
           </div>
         ))}
+        {d.factsEmpty && (
+          <div className="text-xs" style={{ color: "oklch(0.6 0 0)" }}>
+            No key facts on file.
+          </div>
+        )}
       </div>
 
-      {/* Recommendation */}
+      {/* Recommendation: live for the owner who can act, greyed context otherwise */}
       {d.rec.has && (
         <div
           className="mt-6 rounded-[12px] border p-[16px_18px]"
-          style={{ borderColor: d.rec.border, background: d.rec.bg }}
+          style={
+            d.rec.mode === "context"
+              ? { borderColor: "oklch(0.9 0 0)", background: "oklch(0.975 0 0)" }
+              : { borderColor: d.rec.border, background: d.rec.bg }
+          }
         >
           <div className="flex items-center gap-2">
             <div className={KICKER} style={KICKER_STYLE}>
-              RECOMMENDED
+              {d.rec.kicker ?? "RECOMMENDED"}
             </div>
             <div
-              className="rounded-[5px] px-[7px] py-[2px] font-mono text-[9px]"
-              style={{ letterSpacing: "0.08em", color: d.rec.tagColor, background: d.rec.tagBg }}
+              className="cursor-default rounded-[5px] px-[7px] py-[2px] font-mono text-[9px]"
+              style={
+                d.rec.mode === "context"
+                  ? { letterSpacing: "0.08em", color: "oklch(0.45 0 0)", background: "oklch(0.94 0 0)" }
+                  : { letterSpacing: "0.08em", color: d.rec.tagColor, background: d.rec.tagBg }
+              }
             >
               {d.rec.direction}
             </div>
           </div>
-          <div className="mt-[7px] text-base font-semibold">{d.rec.label}</div>
-          <div className="mt-[5px] text-[13px] leading-[1.5]" style={{ color: "oklch(0.45 0 0)" }}>
-            {d.rec.rationale}
+          <div
+            className="mt-[7px] text-base font-semibold"
+            style={d.rec.mode === "context" ? { color: "oklch(0.45 0 0)" } : undefined}
+          >
+            {d.rec.label}
           </div>
+          {d.rec.rationale && (
+            <div className="mt-[5px] text-[13px] leading-[1.5]" style={{ color: "oklch(0.45 0 0)" }}>
+              {d.rec.rationale}
+            </div>
+          )}
+          {d.rec.mode === "context" && d.rec.contextNote && (
+            <div className="mt-[8px] font-mono text-[10px]" style={{ letterSpacing: "0.04em", color: "oklch(0.55 0 0)" }}>
+              {d.rec.contextNote}
+            </div>
+          )}
         </div>
       )}
 
@@ -213,20 +323,36 @@ export function CaseDetail({
             {d.actionHeading}
           </div>
           <div className="flex flex-wrap gap-[10px]">
-            {d.actorButtons.map((b) => (
-              <button
-                key={b.key}
-                onClick={() => onAction(b.key)}
-                className="dw-fade-hover flex cursor-pointer flex-col items-start gap-[2px] rounded-[9px] px-4 py-[10px]"
-                style={{ background: b.bg, color: b.color, border: b.border }}
-              >
-                <span className="text-[13px] font-medium">{b.label}</span>
-                <span className="font-mono text-[8.5px]" style={{ letterSpacing: "0.06em", color: b.subColor }}>
-                  {b.sub}
-                </span>
-              </button>
-            ))}
+            {d.actorButtons.map((b) => {
+              const Icon = ACTION_ICON[b.key];
+              return (
+                <button
+                  key={b.key}
+                  onClick={() => onAction(b.key)}
+                  className="dw-action flex cursor-pointer items-center gap-3 rounded-[10px] px-4 py-[11px]"
+                  style={{ background: b.bg, color: b.color, border: b.border }}
+                >
+                  {Icon && <Icon size={15} strokeWidth={2} aria-hidden />}
+                  <span className="flex flex-col items-start gap-[2px]">
+                    <span className="text-[13px] font-medium">{b.label}</span>
+                    <span className="font-mono text-[8.5px]" style={{ letterSpacing: "0.06em", color: b.subColor }}>
+                      {b.sub}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
           </div>
+        </div>
+      )}
+
+      {/* Next step: explain the state when there is nothing to click yet */}
+      {d.nextStep.show && (
+        <div
+          className="mt-6 rounded-[10px] border p-[13px_16px] text-[13px]"
+          style={{ borderColor: "oklch(0.92 0 0)", background: "oklch(0.98 0 0)", color: "oklch(0.45 0 0)" }}
+        >
+          {d.nextStep.text}
         </div>
       )}
 

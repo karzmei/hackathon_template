@@ -44,8 +44,8 @@ class HelvetiaReKycJourneyTest(unittest.TestCase):
         self.assertEqual(len(self.alert.current.owners), 3)
         self.assertTrue(any(not o.screened for o in self.alert.current.owners))
 
-    def test_six_invalidated_assumptions_each_cited(self):
-        self.assertEqual(len(self.alert.drift_score.invalidated_assumptions), 6)
+    def test_seven_invalidated_assumptions_each_cited(self):
+        self.assertEqual(len(self.alert.drift_score.invalidated_assumptions), 7)
         # Every supporting signal carries a source and a confidence (the citations).
         self.assertTrue(self.alert.signals)
         for signal in self.alert.signals:

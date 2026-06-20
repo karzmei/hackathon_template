@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { ROLES, type Role } from "@/lib/cockpit-types";
 
 // The three seats, with the copy from the prototype. line2 marks the line of defence.
@@ -30,6 +31,8 @@ export function LoginScreen({ onPick }: { onPick: (role: Role) => void }) {
       className="flex flex-1 flex-col items-center justify-center overflow-y-auto p-8 text-center"
       style={{ background: "oklch(0.97 0 0)" }}
     >
+      {/* eslint-disable-next-line @next/next/no-img-element -- static brand mark, no optimisation needed */}
+      <img src="/driftwatch-icon.svg" alt="" className="mb-3 h-14 w-14" />
       <div className="font-mono text-[13px] font-medium" style={{ letterSpacing: "0.30em", color: "oklch(0.205 0 0)" }}>
         DRIFTWATCH
       </div>
@@ -37,10 +40,10 @@ export function LoginScreen({ onPick }: { onPick: (role: Role) => void }) {
         AMINA · KYC DRIFT COCKPIT
       </div>
       <h1 className="mb-[6px] mt-7 text-[31px] font-semibold" style={{ letterSpacing: "-0.02em" }}>
-        Who&apos;s on shift?
+        Select your role
       </h1>
       <p className="mb-3 mt-0 max-w-[520px] text-sm leading-relaxed" style={{ color: "oklch(0.556 0 0)" }}>
-        Pick a seat. Relationship Manager and Account Manager are the{" "}
+        Choose your seat to open your queue. Relationship Manager and Account Manager are the{" "}
         <b style={{ color: "oklch(0.35 0 0)" }}>first line</b> who own the client; Compliance is the{" "}
         <b style={{ color: "oklch(0.35 0 0)" }}>second line</b> control. Flags go up; instructions come back down.
       </p>
@@ -98,8 +101,23 @@ export function LoginScreen({ onPick }: { onPick: (role: Role) => void }) {
           );
         })}
       </div>
-      <div className="mt-[30px] font-mono text-[10px]" style={{ letterSpacing: "0.16em", color: "oklch(0.66 0 0)" }}>
-        PROTOTYPE 1 · COCKPIT, OPEN IN TWO WINDOWS TO RUN THE HANDOFF LIVE
+      <Link
+        href="/dashboard"
+        className="mt-[26px] rounded-full border bg-white px-[14px] py-[6px] font-mono text-[10px]"
+        style={{ letterSpacing: "0.14em", color: "oklch(0.4 0 0)", borderColor: "oklch(0.88 0 0)" }}
+      >
+        COST &amp; EFFICIENCY DASHBOARD &rarr;
+      </Link>
+      <div
+        className="mt-[16px] flex items-center gap-[7px] font-mono text-[10px]"
+        style={{ letterSpacing: "0.16em", color: "oklch(0.6 0 0)" }}
+      >
+        <span
+          className="dw-pulse inline-block h-[6px] w-[6px] rounded-full"
+          style={{ background: "#97c459" }}
+          aria-hidden="true"
+        />
+        LIVE · CASES SYNC ACROSS THE TEAM IN REAL TIME
       </div>
     </div>
   );

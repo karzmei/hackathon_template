@@ -7,17 +7,36 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { seedCases } from "@/lib/cockpit-seed";
+import { api } from "@/lib/api";
+import { alertToCase, DECISION_TO_ACTION } from "@/lib/alert-to-case";
 import type { Case, Decision, Role } from "@/lib/cockpit-types";
+import { nowStamp } from "@/lib/utils";
 
 const CASES_KEY = "dw_p1_cases_v2";
 const ROLE_KEY = "dw_p1_role";
 const POLL_MS = 1100;
 
+// Opt-in live mode. Off by default, so the cockpit stays a self-contained mock demo;
+// set NEXT_PUBLIC_USE_BACKEND=true to drive it from the FastAPI backend instead.
+const USE_BACKEND = process.env.NEXT_PUBLIC_USE_BACKEND === "true";
+
+// Pull the live alerts and adapt them to cockpit cases. Reuses an existing run if the
+// backend already has alerts, so opening a second window for the handoff demo does not
+// reset the store and wipe a decision. Returns null on any failure (or the 700ms
+// timeout) so the caller keeps the local/seed state instead of hanging.
+async function hydrateFromBackend(): Promise<Case[] | null> {
+  try {
+    let rows = await api.listAlerts();
+    if (!rows.length) rows = (await api.runPipeline()).alerts;
+    const alerts = await Promise.all(rows.map((r) => api.getAlert(r.id)));
+    return alerts.map(alertToCase);
+  } catch {
+    return null;
+  }
+}
+
 function now(): string {
-  return (
-    "20 Jun " +
-    new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
-  );
+  return nowStamp();
 }
 
 function defaultRecipient(role: Role): Role {
@@ -43,6 +62,7 @@ export interface Cockpit {
   pick: (role: Role) => void;
   logout: () => void;
   select: (id: string) => void;
+  selectInitial: (id: string) => void;
   setMsgTo: (to: Role) => void;
   setMsgDraft: (text: string) => void;
   escalateCompliance: () => void;
@@ -50,6 +70,7 @@ export interface Cockpit {
   handback: () => void;
   markReviewed: () => void;
   decide: (decision: Decision) => void;
+  contactOperations: (message: string) => void;
   confirmInstruction: () => void;
   sendMsg: () => void;
 }
@@ -119,12 +140,24 @@ export function useCockpit(): Cockpit {
     setMsgToState(restored ? defaultRecipient(restored) : null);
     setReady(true);
 
+    // Live mode: replace the local/seed state once the backend responds; on failure
+    // or timeout the local state stands, so the demo never blocks on a dead backend.
+    let cancelled = false;
+    if (USE_BACKEND) {
+      hydrateFromBackend().then((live) => {
+        if (cancelled || !live || !live.length) return;
+        persist(live);
+        setCases(live);
+      });
+    }
+
     const poll = window.setInterval(sync, POLL_MS);
     const onStorage = (e: StorageEvent) => {
       if (e.key === CASES_KEY) sync();
     };
     window.addEventListener("storage", onStorage);
     return () => {
+      cancelled = true;
       window.clearInterval(poll);
       window.removeEventListener("storage", onStorage);
     };
@@ -158,27 +191,48 @@ export function useCockpit(): Cockpit {
       setSelectedId(id);
       setMsgToState(role ? defaultRecipient(role) : null);
       setMsgDraft("");
-      if (role === "compliance" && c) {
-        if (c.status === "flagged_by_rm" || c.status === "escalated_by_am") {
-          update(id, (x) => {
-            x.status = "in_compliance_review";
-            x.unread = false;
-            x.audit = [
-              ...x.audit,
-              { ts: now(), actor: "Sofia Keller · Compliance", action: "Opened case, review started" },
-            ];
-            return x;
-          });
-        } else if (c.unread) {
-          update(id, (x) => {
-            x.unread = false;
-            return x;
-          });
+      if (!c || !role) return;
+
+      // Opening a case can: move a flagged case into Compliance review, clear the
+      // case-level unread, and clear the unread dot on messages addressed to the
+      // viewer. Apply them in one update; two sequential updates would each read the
+      // pre-update mirror and clobber one another.
+      const opensForReview =
+        role === "compliance" && (c.status === "flagged_by_rm" || c.status === "escalated_by_am");
+      const clearsCaseUnread = role === "compliance" && !opensForReview && c.unread;
+      const clearsAmUnread = role === "am" && !!c.amUnread;
+      const clearsMsgUnread = (c.messages || []).some((m) => m.to === role && !m.read);
+      if (!opensForReview && !clearsCaseUnread && !clearsAmUnread && !clearsMsgUnread) return;
+
+      update(id, (x) => {
+        if (opensForReview) {
+          x.status = "in_compliance_review";
+          x.unread = false;
+          x.audit = [
+            ...x.audit,
+            { ts: now(), actor: "Sofia Keller · Compliance", action: "Opened case, review started" },
+          ];
+        } else if (clearsCaseUnread) {
+          x.unread = false;
+        } else if (clearsAmUnread) {
+          x.amUnread = false;
         }
-      }
+        if (clearsMsgUnread) {
+          x.messages = (x.messages || []).map((m) => (m.to === role ? { ...m, read: true } : m));
+        }
+        return x;
+      });
     },
     [role, update],
   );
+
+  // Default landing selection: show a case without "consuming" it. Unlike select(),
+  // this never starts a Compliance review or clears unread state, so simply opening
+  // the cockpit on the top-ranked case writes nothing to the audit trail. Those
+  // mutations stay reserved for a real click via select().
+  const selectInitial = useCallback((id: string) => {
+    setSelectedId(id);
+  }, []);
 
   // first line -> second line (up)
   const escalateCompliance = useCallback(() => {
@@ -241,14 +295,50 @@ export function useCockpit(): Cockpit {
         doc_request: "Requested document (instruction to 1st line)",
         watchlist: "Added to watchlist",
         mlro: "Escalated to MLRO",
+        contact_ops: "Recommended reclassification to Operations (pending operations)",
         dismiss: "Dismissed, no action",
       };
+      // Live mode: persist the decision to the backend audit trail too. Fire and
+      // forget with errors swallowed; the local update below is the demo source of
+      // truth and must stand even if the backend is slow or offline.
+      if (USE_BACKEND) {
+        api.decide(selectedId, DECISION_TO_ACTION[decision], labels[decision]).catch(() => {});
+      }
       update(selectedId, (x) => {
         x.status = "decided";
         x.decision = decision;
         x.instructionDone = false;
         x.unread = false;
         x.audit = [...x.audit, { ts: now(), actor: "Sofia Keller · Compliance", action: labels[decision] }];
+        return x;
+      });
+    },
+    [selectedId, update],
+  );
+
+  // Recommend reclassification to Operations. This only drafts a recommendation;
+  // operations performs the documented change, so it appends a recommendation entry
+  // (with the drafted text) and shows a "pending operations" pill without touching
+  // the case risk band.
+  const contactOperations = useCallback(
+    (message: string) => {
+      if (!selectedId) return;
+      const text = message.trim();
+      update(selectedId, (x) => {
+        x.status = "decided";
+        x.decision = "contact_ops";
+        x.instructionDone = false;
+        x.unread = false;
+        x.audit = [
+          ...x.audit,
+          {
+            ts: now(),
+            actor: "Sofia Keller · Compliance",
+            action: text
+              ? `Recommended reclassification to Operations (pending operations): ${text}`
+              : "Recommended reclassification to Operations (pending operations)",
+          },
+        ];
         return x;
       });
     },
@@ -291,6 +381,7 @@ export function useCockpit(): Cockpit {
     pick,
     logout,
     select,
+    selectInitial,
     setMsgTo,
     setMsgDraft,
     escalateCompliance,
@@ -298,6 +389,7 @@ export function useCockpit(): Cockpit {
     handback,
     markReviewed,
     decide,
+    contactOperations,
     confirmInstruction,
     sendMsg,
   };
