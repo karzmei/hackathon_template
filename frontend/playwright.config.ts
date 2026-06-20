@@ -1,8 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// End-to-end config (mirrors the inc-b2c-mvp e2e setup). Boots BOTH services so the
-// real vertical slice runs: the FastAPI backend (offline LLM stub, no Azure key) and
-// the Next dev server. No LLM mocking is needed because the backend stub is offline.
+// End-to-end config. The cockpit runs on the mock-first data layer, so e2e boots only
+// the Next dev server with NEXT_PUBLIC_USE_MOCK=1; the demo dataset is deterministic
+// and no backend or LLM key is required.
 const isCI = !!process.env.CI;
 
 export default defineConfig({
@@ -21,20 +21,11 @@ export default defineConfig({
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
   ],
-  webServer: [
-    {
-      // Use the backend virtualenv interpreter so uvicorn + deps resolve.
-      command: ".venv\\Scripts\\python.exe -m uvicorn main:app --port 8000",
-      cwd: "../backend",
-      url: "http://localhost:8000/api/health",
-      timeout: 120_000,
-      reuseExistingServer: !isCI,
-    },
-    {
-      command: "npm run dev",
-      url: "http://localhost:3000",
-      timeout: 120_000,
-      reuseExistingServer: !isCI,
-    },
-  ],
+  webServer: {
+    command: "npm run dev",
+    url: "http://localhost:3000",
+    timeout: 120_000,
+    reuseExistingServer: !isCI,
+    env: { NEXT_PUBLIC_USE_MOCK: "1" },
+  },
 });

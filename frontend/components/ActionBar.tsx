@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { api, RecommendedAction } from "@/lib/api";
+import { RecommendedAction } from "@/lib/api";
+import { decide as decideAlert } from "@/lib/data";
 import { Button } from "@/components/ui/button";
 
 const ACTIONS: {
@@ -29,7 +30,7 @@ export function ActionBar({
     setBusy(action);
     setError(null);
     try {
-      await api.decide(alertId, action);
+      await decideAlert(alertId, action);
       onDecided();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Decision failed");

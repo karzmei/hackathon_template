@@ -36,9 +36,9 @@
   "client_id": "helvetia",
   "client_name": "Helvetia SaaS GmbH",
   "cost": {
-    "tokens_in": 395,
-    "tokens_out": 199,
-    "usd": 0.001316
+    "tokens_in": 867,
+    "tokens_out": 201,
+    "usd": 0.002192
   },
   "created_at": "<normalized>",
   "current": {
@@ -126,7 +126,7 @@
     ]
   },
   "id": "alert-helvetia",
-  "implies": "Multiple public signals jointly moved the profile: business model: B2B SaaS -> Crypto OTC desk; ownership: 2 owners -> 3 owners (1 unscreened); legal form: GmbH -> AG; expected volume: low -> high; risk rating: LOW -> HIGH; domain: helvetia-saas.ch -> helvetia-otc.io. These invalidate the onboarded assumptions and warrant re-kyc. [offline demo narrative]",
+  "implies": "Multiple public signals jointly moved the profile: business model: B2B SaaS -> Crypto OTC desk; ownership: 2 owners -> 3 owners (1 unscreened); legal form: GmbH -> AG; expected volume: low -> high; risk rating: LOW -> HIGH; domain: helvetia-saas.ch -> helvetia-otc.io. These changes invalidate the onboarded assumptions and warrant re-kyc. [offline demo narrative]",
   "recommended_action": "re_kyc",
   "risk_band": "LOW -> HIGH",
   "signals": [

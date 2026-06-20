@@ -91,8 +91,9 @@
   }
 }
 
-/* Expose the neutral + status tokens as Tailwind v4 utility colours
-   (bg-*, text-*, border-*). The status tones map directly onto risk bands. */
+/* Expose the neutral tokens as Tailwind v4 utility colours (bg-*, text-*,
+   border-*). The status palette stays as raw --color-*-{info,success,warning,
+   danger} vars; SeverityBadge reads them directly by tone. */
 @theme inline {
   /* Geist ships its CSS vars as --font-geist-*; point Tailwind's font-sans /
      font-mono utilities at them. font-serif reads --font-serif (set by next/font). */
@@ -120,16 +121,4 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-bg-info: var(--color-background-info);
-  --color-bg-success: var(--color-background-success);
-  --color-bg-warning: var(--color-background-warning);
-  --color-bg-danger: var(--color-background-danger);
-  --color-fg-info: var(--color-text-info);
-  --color-fg-success: var(--color-text-success);
-  --color-fg-warning: var(--color-text-warning);
-  --color-fg-danger: var(--color-text-danger);
-  --color-bd-info: var(--color-border-info);
-  --color-bd-success: var(--color-border-success);
-  --color-bd-warning: var(--color-border-warning);
-  --color-bd-danger: var(--color-border-danger);
 }

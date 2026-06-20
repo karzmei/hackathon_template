@@ -21,29 +21,41 @@ an audit trail; never a black box.
   Encode severity twice (left card tint + badge).
 - **Type.** Source Serif 4 headings (`font-serif`), Geist body, Geist Mono for timestamps/tokens.
 - Radius `0.625rem`: cards `rounded-xl`, controls `rounded-lg`, pills `rounded-full`. Restrained
-  spacing; do not over-style. Content width `max-w-5xl`.
+  spacing; do not over-style. The cockpit is a full-height shell (`h-screen`), not a centered page.
 
-## Screen 1 — Queue (`app/page.tsx`)
+## Cockpit — one screen (`app/page.tsx`)
 
-Morning inbox. Each row a `Card` with a colored left accent by band: client name; plain-language
-"top change" (not a signal code); status pill; depth + cost chip. Top bar: `Run pipeline` CTA
-(`Button variant="brand"`) with spinner, plus a per-day cost chip. Include one "risk went *down*,
+Master-detail on a single full-height screen: `CockpitHeader` on top, then a
+`grid-cols-[392px_1fr]` of the queue rail and the case-file detail. The app runs on a mock-first
+data layer (`lib/data.ts` -> `lib/mock.ts`), so it works offline and uses the backend when it is up.
+
+### Header (`components/CockpitHeader.tsx`)
+
+Brand + `/ queue`, a cost/throughput pill (today USD, signals, alerts, deep count), and the
+`Run pipeline` CTA (`Button variant="brand"`) with a spinner while running.
+
+### Queue rail (`components/QueueRail.tsx`)
+
+Morning inbox. Each row a selectable button with a left accent by band: a `Sparkline` drift trend,
+client name, drift %, plain-language "top change" (not a signal code), and a status dot line
+(status, depth, cost, age). Selecting a row drives the detail pane. Includes a "risk went *down*,
 baseline confirmed" row so it reads as judgment, not an alarm generator.
 
-## Screen 2 — Alert detail (`app/alerts/[id]/page.tsx`) — strict order
+### Detail pane (`components/DetailPane.tsx`) — strict order
 
-1. **Risk delta first.** Tone band: "MEDIUM -> HIGH", confidence %, count of invalidated
-   assumptions; then a single "what this implies" line, before any raw signal.
-2. **Baseline vs current.** A `label | baseline -> current` grid (business model, legal form,
-   ownership, expected volume, domain, risk rating); changed rows emphasized; lucide `ArrowRight`
-   between values. This is the money shot: KYC drift legible at a glance.
-3. **Source-cited timeline.** Newest-first; each entry: uppercase muted source (ZEFIX, On-chain
-   KYT, Wayback, GDELT), relative time, confidence badge, summary, evidence link (`ExternalLink`).
-4. **Human-in-the-loop.** Exactly three actions: Approve Re-KYC (`default`), Escalate to MLRO
-   (`brand`), Dismiss false positive (`outline`); status pill in header; append-only audit line at
-   bottom.
+1. **Risk delta first** (`DriftBand`). Aggregate on a LOW/MEDIUM/HIGH gradient with a marker:
+   "MEDIUM -> HIGH", confidence %, the `0.82 / HIGH` score; then a single "what this implies" line.
+2. **Baseline vs current** (`DimensionDrift`). Per-dimension `baseline -> current` rows with a bar
+   sized to the delta (business model, legal form, ownership, expected volume, domain, risk rating);
+   changed rows emphasized. This is the money shot: KYC drift legible at a glance.
+3. **Source-cited timeline** (`SignalTimeline`). Newest-first; each entry: uppercase muted source
+   (ZEFIX, On-chain KYT, Wayback, GDELT), date, confidence badge, summary, evidence link.
+4. **Human-in-the-loop** (`ActionBar`). Exactly three actions: Approve Re-KYC (`default`), Escalate
+   to MLRO (`brand`), Dismiss false positive (`outline`); status pill in the header; append-only
+   audit line at the bottom.
 
-Plus a **cost meter**: per-alert ("DEEP, ~$0.12") and per-day total; visible, not buried.
+Plus a **cost meter**: per-alert ("DEEP, ~$0.12") in the detail header and a per-day total in the
+cockpit header; visible, not buried.
 
 ## Make these unmissable (they win points)
 

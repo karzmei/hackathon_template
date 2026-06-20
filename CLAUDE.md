@@ -79,9 +79,9 @@ Request flow: `frontend/lib/api.ts` -> FastAPI routes in `backend/main.py` -> `p
 
 - Recommend, never act: no code path changes a client's risk state except `step4_human_review`.
 - Audit everything: state changes append an `AuditEvent`; never mutate or delete them.
-- The four UX requirements live in `frontend/app/alerts/[id]/page.tsx` in order: risk delta + what
-  it implies first, then baseline-vs-current, then the source-cited timeline, then the three
-  decision actions with status pill and audit trail.
+- The four UX requirements live in `frontend/components/DetailPane.tsx` (the cockpit's detail pane)
+  in order: risk delta + what it implies first, then baseline-vs-current, then the source-cited
+  timeline, then the three decision actions with status pill and audit trail.
 
 ## Demo data
 

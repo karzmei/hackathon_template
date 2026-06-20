@@ -106,6 +106,9 @@ dashes; use semicolons, commas, or shorter sentences.
 
 ## Pull requests and merge
 
+- Recommended branching: keep `main` checked out in the shared working tree and do not switch its
+  branch; agents do the work on a separate git worktree branched from `origin/main`, then push and
+  open a PR (`git worktree add ../hackathon_template-<slug> -b <prefix>/<slug> origin/main`).
 - Do not commit straight to `main`; branch first (for example `feat/...`, `fix/...`, `docs/...`),
   then open a PR. Remote is `origin` -> `https://github.com/karzmei/hackathon_template.git`.
 - Use the `gh` CLI for PR and issue operations. Keep the PR description short: what changed, why, and
