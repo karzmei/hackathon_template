@@ -12,11 +12,18 @@ estimated token count, so the whole pipeline runs end to end without any key.
 
 from __future__ import annotations
 
+import asyncio
+import logging
 import os
 import uuid
 from dataclasses import dataclass
 
 import config
+
+logger = logging.getLogger("driftwatch.llm")
+
+_CALL_TIMEOUT = 30.0   # seconds per attempt
+_MAX_RETRIES = 2       # retries after first failure (total attempts = 3)
 
 APP_NAME = "driftwatch"
 USER_ID = "system"
@@ -34,6 +41,25 @@ class LlmResult:
 
 def _estimate_tokens(text: str) -> int:
     return max(1, len(text) // 4)
+
+
+async def _with_retry(coro_fn, *args, **kwargs) -> tuple[str, int, int]:
+    """Run an async call with per-attempt timeout and exponential-backoff retries."""
+    last_exc: Exception | None = None
+    for attempt in range(_MAX_RETRIES + 1):
+        try:
+            return await asyncio.wait_for(
+                coro_fn(*args, **kwargs), timeout=_CALL_TIMEOUT
+            )
+        except Exception as exc:
+            last_exc = exc
+            if attempt < _MAX_RETRIES:
+                wait = 2 ** attempt  # 1s, 2s
+                logger.warning("LLM call failed (attempt %d/%d): %s; retrying in %ds",
+                               attempt + 1, _MAX_RETRIES + 1, exc, wait)
+                await asyncio.sleep(wait)
+    logger.error("LLM call failed after %d attempts; falling back to offline stub", _MAX_RETRIES + 1)
+    raise last_exc  # type: ignore[misc]
 
 
 def _gemini_model_for(deployment: str) -> str:
@@ -146,38 +172,42 @@ async def run_agent(
     `deployment` is the Azure deployment name or a hint used to select the
     equivalent model for other providers.
     """
-    if config.azure_configured():
-        model = f"azure/{deployment}"
-        text, tokens_in, tokens_out = await _run_with_litellm(prompt, model, system_instruction)
-        return LlmResult(
-            text=text, tokens_in=tokens_in, tokens_out=tokens_out,
-            usd=config.usd_for(model, tokens_in, tokens_out),
-            model=model, offline=False,
-        )
+    try:
+        if config.azure_configured():
+            model = f"azure/{deployment}"
+            text, tokens_in, tokens_out = await _with_retry(_run_with_litellm, prompt, model, system_instruction)
+            return LlmResult(
+                text=text, tokens_in=tokens_in, tokens_out=tokens_out,
+                usd=config.usd_for(model, tokens_in, tokens_out),
+                model=model, offline=False,
+            )
 
-    if config.google_configured():
-        os.environ.setdefault("GEMINI_API_KEY", config.GOOGLE_API_KEY)
-        model = _gemini_model_for(deployment)
-        text, tokens_in, tokens_out = await _run_with_litellm(prompt, model, system_instruction)
-        return LlmResult(
-            text=text, tokens_in=tokens_in, tokens_out=tokens_out,
-            usd=config.usd_for(model, tokens_in, tokens_out),
-            model=model, offline=False,
-        )
+        if config.google_configured():
+            os.environ.setdefault("GEMINI_API_KEY", config.GOOGLE_API_KEY)
+            model = _gemini_model_for(deployment)
+            text, tokens_in, tokens_out = await _with_retry(_run_with_litellm, prompt, model, system_instruction)
+            return LlmResult(
+                text=text, tokens_in=tokens_in, tokens_out=tokens_out,
+                usd=config.usd_for(model, tokens_in, tokens_out),
+                model=model, offline=False,
+            )
 
-    if config.publicai_configured():
-        model = _publicai_model_for(deployment)
-        api_key = os.environ.get("PUBLICAI_API_KEY", "")
-        text, tokens_in, tokens_out = await _run_with_openai(
-            prompt, model, system_instruction,
-            api_base=config.PUBLICAI_BASE_URL,
-            api_key=api_key,
-        )
-        return LlmResult(
-            text=text, tokens_in=tokens_in, tokens_out=tokens_out,
-            usd=config.usd_for(model, tokens_in, tokens_out),
-            model=model, offline=False,
-        )
+        if config.publicai_configured():
+            model = _publicai_model_for(deployment)
+            api_key = os.environ.get("PUBLICAI_API_KEY", "")
+            text, tokens_in, tokens_out = await _with_retry(
+                _run_with_openai, prompt, model, system_instruction,
+                api_base=config.PUBLICAI_BASE_URL,
+                api_key=api_key,
+            )
+            return LlmResult(
+                text=text, tokens_in=tokens_in, tokens_out=tokens_out,
+                usd=config.usd_for(model, tokens_in, tokens_out),
+                model=model, offline=False,
+            )
+
+    except Exception:
+        pass  # all retries exhausted; fall through to offline stub
 
     text = offline_response or "[offline demo - no LLM key configured]"
     tokens_in = _estimate_tokens(prompt + system_instruction)
@@ -185,5 +215,5 @@ async def run_agent(
     return LlmResult(
         text=text, tokens_in=tokens_in, tokens_out=tokens_out,
         usd=config.usd_for(deployment, tokens_in, tokens_out),
-        model=f"offline/{deployment}", offline=True,
+        model=f"fallback/{deployment}", offline=True,
     )

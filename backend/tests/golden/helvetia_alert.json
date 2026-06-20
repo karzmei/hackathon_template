@@ -41,6 +41,16 @@
     "tokens_out": 319,
     "usd": 0.001043
   },
+  "cost_step2": {
+    "tokens_in": 671,
+    "tokens_out": 217,
+    "usd": 0.000616
+  },
+  "cost_step3": {
+    "tokens_in": 659,
+    "tokens_out": 102,
+    "usd": 0.000427
+  },
   "created_at": "<normalized>",
   "current": {
     "business_model": "Crypto OTC desk",

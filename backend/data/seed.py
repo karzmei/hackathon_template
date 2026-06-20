@@ -269,6 +269,11 @@ SIGNALS: dict[str, list[Signal]] = {
 }
 
 
+# --- DEMO EXTRAS: add breadth to the cascade funnel (delete these two lines to slim the demo) ---
+from data.demo_extras import EXTRA_CLIENTS, EXTRA_BASELINES, EXTRA_SIGNALS  # noqa: E402
+CLIENTS = CLIENTS + EXTRA_CLIENTS; BASELINES = {**BASELINES, **EXTRA_BASELINES}; SIGNALS = {**SIGNALS, **EXTRA_SIGNALS}  # noqa: E501
+
+
 def all_clients() -> list[Client]:
     return CLIENTS
 

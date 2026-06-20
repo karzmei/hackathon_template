@@ -199,6 +199,8 @@ class Alert(BaseModel):
     current: LiveProfile
     analysis_depth: int = Field(..., ge=1, le=3)
     cost: Cost
+    cost_step2: Cost = Field(default_factory=Cost)
+    cost_step3: Cost = Field(default_factory=Cost)
     status: AlertStatus
     created_at: str
     audit: list[AuditEvent] = Field(default_factory=list)
@@ -229,6 +231,38 @@ class DecisionRequest(BaseModel):
 
 class RunResponse(BaseModel):
     alerts: list[AlertRow]
+
+
+class StageCost(BaseModel):
+    stage: str                  # "rules" | "reasoning" | "deep"
+    label: str
+    model: Optional[str] = None
+    entered: int
+    survived: int
+    tokens_in: int = 0
+    tokens_out: int = 0
+    usd: float = 0.0
+
+
+class ClientCost(BaseModel):
+    client_id: str
+    client_name: str
+    depth: int
+    band: str
+    tokens_in: int = 0
+    tokens_out: int = 0
+    usd: float = 0.0
+
+
+class CostDashboard(BaseModel):
+    generated_at: str
+    totals: "CostToday"
+    by_stage: list[StageCost]
+    by_client: list[ClientCost]
+    usd_per_alert: float
+    actionable_alerts: int
+    usd_per_actionable: float
+    cheap_exits: int
 
 
 class CostToday(BaseModel):

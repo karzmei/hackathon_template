@@ -14,9 +14,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from schemas import (
     Alert,
     AlertRow,
+    ClientCost,
+    CostDashboard,
     CostToday,
     DecisionRequest,
+    RecommendedAction,
     RunResponse,
+    StageCost,
 )
 
 from data.seed import all_clients
@@ -99,4 +103,80 @@ def cost_today() -> CostToday:
         tokens_out=sum(a.cost.tokens_out for a in alerts),
         usd=round(sum(a.cost.usd for a in alerts), 6),
         alerts=len(alerts),
+    )
+
+
+@app.get("/api/cost/dashboard", response_model=CostDashboard)
+def cost_dashboard() -> CostDashboard:
+    alerts = store.list_alerts()
+    total_usd = round(sum(a.cost.usd for a in alerts), 6)
+    total_in = sum(a.cost.tokens_in for a in alerts)
+    total_out = sum(a.cost.tokens_out for a in alerts)
+    n = len(alerts)
+
+    depth2 = [a for a in alerts if a.analysis_depth >= 2]
+    depth3 = [a for a in alerts if a.analysis_depth >= 3]
+
+    by_stage = [
+        StageCost(
+            stage="rules",
+            label="Cheap rules",
+            model=None,
+            entered=n,
+            survived=len(depth2),
+            tokens_in=0,
+            tokens_out=0,
+            usd=0.0,
+        ),
+        StageCost(
+            stage="reasoning",
+            label="Reasoning filter",
+            model=config.DEPLOYMENT_REASONING,
+            entered=len(depth2),
+            survived=len(depth3),
+            tokens_in=sum(a.cost_step2.tokens_in for a in depth2),
+            tokens_out=sum(a.cost_step2.tokens_out for a in depth2),
+            usd=round(sum(a.cost_step2.usd for a in depth2), 6),
+        ),
+        StageCost(
+            stage="deep",
+            label="Deep analysis",
+            model=config.DEPLOYMENT_DEEP,
+            entered=len(depth3),
+            survived=len(depth3),
+            tokens_in=sum(a.cost_step3.tokens_in for a in depth3),
+            tokens_out=sum(a.cost_step3.tokens_out for a in depth3),
+            usd=round(sum(a.cost_step3.usd for a in depth3), 6),
+        ),
+    ]
+
+    by_client = [
+        ClientCost(
+            client_id=a.client_id,
+            client_name=a.client_name,
+            depth=a.analysis_depth,
+            band=a.drift_score.band.value,
+            tokens_in=a.cost.tokens_in,
+            tokens_out=a.cost.tokens_out,
+            usd=a.cost.usd,
+        )
+        for a in alerts
+    ]
+
+    actionable = sum(
+        1 for a in alerts
+        if a.recommended_action in (RecommendedAction.re_kyc, RecommendedAction.escalate)
+        or a.drift_score.band.value == "high"
+    )
+    cheap_exits = sum(1 for a in alerts if a.analysis_depth == 1 and a.cost.usd == 0.0)
+
+    return CostDashboard(
+        generated_at=store.now_iso(),
+        totals=CostToday(tokens_in=total_in, tokens_out=total_out, usd=total_usd, alerts=n),
+        by_stage=by_stage,
+        by_client=by_client,
+        usd_per_alert=round(total_usd / n, 6) if n else 0.0,
+        actionable_alerts=actionable,
+        usd_per_actionable=round(total_usd / actionable, 6) if actionable else 0.0,
+        cheap_exits=cheap_exits,
     )
