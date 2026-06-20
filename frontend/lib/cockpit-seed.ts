@@ -136,7 +136,7 @@ export function seedCases(): Case[] {
       decision: null,
       instructionDone: false,
       unread: false,
-      materiality: 78,
+      materiality: 94,
       headline: "A director was named in an investigative report on a sanctions-evasion network.",
       signals: [
         { label: "Adverse media · director sanctions probe", pts: 40 },

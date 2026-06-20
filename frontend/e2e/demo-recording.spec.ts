@@ -151,12 +151,10 @@ test("demo recording: full sweep, looped", async ({ page }) => {
     await expect(page.getByText("Escalations · ranked")).toBeVisible();
     await beat(page, 500);
 
-    // 3) Inbox drives the case file. The cockpit opens already landed on the top case, so open
-    //    the second row first to make the detail pane visibly swap, then open Helvetia (the
-    //    HIGH-risk crypto pivot) for the narrative. Hold on the risk delta.
-    await clickExpectChange(page, page.getByRole("button", { name: /Castor Mining Ltd/ }), bodyText);
+    // 3) Inbox drives the case file. The cockpit opens already landed on the top-ranked case
+    //    (Castor Mining Ltd, the adverse-media escalation); open Helvetia, the HIGH-risk crypto
+    //    pivot, for the narrative. One selection change, no back-and-forth. Hold on the risk delta.
     await expect(page.getByRole("heading", { name: "Castor Mining Ltd" })).toBeVisible();
-    await beat(page, 350);
     await clickExpectChange(page, page.getByRole("button", { name: /Helvetia Capital AG/ }), bodyText);
     await expect(page.getByRole("heading", { name: "Helvetia Capital AG" })).toBeVisible();
     await expect(page.getByText("HIGH RISK")).toBeVisible();
@@ -177,12 +175,10 @@ test("demo recording: full sweep, looped", async ({ page }) => {
     await beat(page, 1100);
 
     // 8) Close the loop: switch to the RM seat, where the Re-KYC instruction lands back down.
-    //    Again open the second row first so the pane visibly swaps, then Helvetia.
+    //    The RM book also opens on the top case (Castor); open Helvetia once, no back-and-forth.
     await clickExpectChange(page, page.getByRole("button", { name: "SWITCH ROLE" }), bodyText);
     await clickExpectChange(page, page.getByRole("button", { name: /Lena Brunner/ }), bodyText);
-    await clickExpectChange(page, page.getByRole("button", { name: /Castor Mining Ltd/ }), bodyText);
     await expect(page.getByRole("heading", { name: "Castor Mining Ltd" })).toBeVisible();
-    await beat(page, 350);
     await clickExpectChange(page, page.getByRole("button", { name: /Helvetia Capital AG/ }), bodyText);
     await expect(page.getByRole("button", { name: "Confirm Re-KYC initiated" })).toBeVisible();
     await beat(page, 900);

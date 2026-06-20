@@ -127,8 +127,8 @@ describe("buildView lists and nav", () => {
   it("RM book is ranked by materiality with quiet clients last", () => {
     const view = buildView({ role: "rm", cases, selectedId: null, msgTo: "am" });
     const ids = view.list.map((r) => r.id);
-    // RM-owned: helvetia(92), castor(78), bernina(58), then quiet alpenrose(8)/meridian(5).
-    expect(ids).toEqual(["helvetia", "castor", "bernina", "alpenrose", "meridian"]);
+    // RM-owned: castor(94), helvetia(92), bernina(58), then quiet alpenrose(8)/meridian(5).
+    expect(ids).toEqual(["castor", "helvetia", "bernina", "alpenrose", "meridian"]);
   });
 
   it("RM header and empty text describe the morning digest", () => {

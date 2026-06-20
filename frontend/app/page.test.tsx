@@ -24,8 +24,8 @@ describe("Cockpit page (end-to-end journeys)", () => {
     expect(await screen.findByText("Your book")).toBeInTheDocument();
     // The RM book lists owned clients; the high-materiality cases are present.
     expect(screen.getByRole("button", { name: /Castor Mining Ltd/ })).toBeInTheDocument();
-    // The cockpit lands on the top-ranked case so the detail pane opens populated.
-    expect(await screen.findByRole("heading", { name: "Helvetia Capital AG" })).toBeInTheDocument();
+    // The cockpit lands on the top-ranked case (Castor) so the detail pane opens populated.
+    expect(await screen.findByRole("heading", { name: "Castor Mining Ltd" })).toBeInTheDocument();
   });
 
   it("FJ2: an RM escalates a case, status flips and the audit trail grows", async () => {
