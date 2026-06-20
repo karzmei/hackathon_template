@@ -1,14 +1,12 @@
 # DRIFTWATCH user interview: former competitor compliance analyst
 
-Interviewee: Linke Gong (She/Her)
-Relevant background: AML alert reviews and compliance reporting / Power BI dashboards at
-Sygnum Bank (a Swiss digital-asset bank; ~1 year, fiat and digital assets). Now in
-Investment & Wealth Management Solutions Compliance at Julius Baer. Applied research assistant
-at HEC Lausanne on the three lines of defense (3LoD) in the compliance operating model.
-Master in Banking and Finance (Quantitative Finance), UZH.
+Interviewee: a former compliance analyst at a digital-asset bank (anonymized).
+Relevant background: AML alert reviews and compliance reporting / dashboards covering both
+fiat and digital assets, plus exposure to the three lines of defense (3LoD) in the compliance
+operating model.
 
-Why she matters for us: she did the exact job DRIFTWATCH is built to support, at a direct
-AMINA peer, and she thinks about where controls sit in the operating model. We want her lived
+Why this matters for us: she did the exact job DRIFTWATCH is built to support, at a peer
+institution, and thinks about where controls sit in the operating model. We want lived
 experience, not a reaction to our pitch. Do not sell; listen.
 
 Format: ~30 minutes including small talk. Realistic substance budget is ~20 to 22 minutes.
@@ -33,10 +31,8 @@ and learn what would make an analyst trust or reject an AI recommendation.
 
 Natural openers (genuine common ground):
 
-- You both spent time at ETH Zurich around 2021 to 2023; easy shared starting point.
-- Her master thesis was business-cycle machine learning for stock forecasting; she is
-  quantitative and will respect precise questions.
-- Light and human if it fits: long-term Shanghai Zoo volunteer.
+- Open on shared background or a light, human topic to build rapport before the substance.
+- She is quantitative; she will respect precise questions.
 
 Framing script (say something close to this):
 
@@ -52,7 +48,7 @@ Confirm: rough time budget, and that she is comfortable. Then go.
 
 ## 1. Warm-up: her role and the shape of the work (3 min)
 
-1. Walk me through your compliance work at Sygnum; what did a normal week look like?
+1. Walk me through your compliance work at the bank; what did a normal week look like?
 2. When you reviewed AML alerts, where did those alerts come from, and what did "handling one"
    involve from start to finish?
 3. How was monitoring split between fiat clients and digital-asset clients? What was different?
@@ -110,7 +106,7 @@ This maps directly to our "cited case file plus recommended action" and the 3LoD
 
 ## 6. Tooling, dashboards, and trust in automation (3 min)
 
-She built Power BI compliance dashboards, so she has a builder's view of this.
+She has built compliance dashboards, so she has a builder's view of this.
 
 19. What did your dashboards and tools do well, and where did they leave you doing manual work
     anyway?
