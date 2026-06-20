@@ -1,6 +1,4 @@
-import { AppHeader } from "driftwatch-frontend";
-import { buildView } from "@/lib/cockpit-view";
-import { seedCases } from "@/lib/cockpit-seed";
+import { AppHeader, buildView, seedCases } from "driftwatch-frontend";
 
 const cases = seedCases();
 

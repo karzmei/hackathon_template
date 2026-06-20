@@ -119,5 +119,13 @@ const header = [
   // First import: process shim, so it evaluates before any app module.
   'import "@/.ds-process-shim";',
 ].join("\n");
-fs.writeFileSync(barrelPath, header + "\n" + lines.join("\n") + "\n");
+// Expose the pure view-model helpers on the bundle global so authored previews
+// can build realistic CockpitView data without importing app source directly
+// (preview builds can't resolve the @/ alias; the global can). esbuild resolves
+// their transitive @/ imports natively because this barrel lives under frontend/.
+const helpers = [
+  'export { buildView } from "@/lib/cockpit-view";',
+  'export { seedCases } from "@/lib/cockpit-seed";',
+];
+fs.writeFileSync(barrelPath, header + "\n" + lines.join("\n") + "\n" + helpers.join("\n") + "\n");
 console.log(`[build-css] wrote ${barrelPath} (${lines.length} exports)`);
