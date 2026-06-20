@@ -7,11 +7,32 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { seedCases } from "@/lib/cockpit-seed";
+import { api } from "@/lib/api";
+import { alertToCase, DECISION_TO_ACTION } from "@/lib/alert-to-case";
 import type { Case, Decision, Role } from "@/lib/cockpit-types";
 
 const CASES_KEY = "dw_p1_cases_v2";
 const ROLE_KEY = "dw_p1_role";
 const POLL_MS = 1100;
+
+// Opt-in live mode. Off by default, so the cockpit stays a self-contained mock demo;
+// set NEXT_PUBLIC_USE_BACKEND=true to drive it from the FastAPI backend instead.
+const USE_BACKEND = process.env.NEXT_PUBLIC_USE_BACKEND === "true";
+
+// Pull the live alerts and adapt them to cockpit cases. Reuses an existing run if the
+// backend already has alerts, so opening a second window for the handoff demo does not
+// reset the store and wipe a decision. Returns null on any failure (or the 700ms
+// timeout) so the caller keeps the local/seed state instead of hanging.
+async function hydrateFromBackend(): Promise<Case[] | null> {
+  try {
+    let rows = await api.listAlerts();
+    if (!rows.length) rows = (await api.runPipeline()).alerts;
+    const alerts = await Promise.all(rows.map((r) => api.getAlert(r.id)));
+    return alerts.map(alertToCase);
+  } catch {
+    return null;
+  }
+}
 
 function now(): string {
   return (
@@ -119,12 +140,24 @@ export function useCockpit(): Cockpit {
     setMsgToState(restored ? defaultRecipient(restored) : null);
     setReady(true);
 
+    // Live mode: replace the local/seed state once the backend responds; on failure
+    // or timeout the local state stands, so the demo never blocks on a dead backend.
+    let cancelled = false;
+    if (USE_BACKEND) {
+      hydrateFromBackend().then((live) => {
+        if (cancelled || !live || !live.length) return;
+        persist(live);
+        setCases(live);
+      });
+    }
+
     const poll = window.setInterval(sync, POLL_MS);
     const onStorage = (e: StorageEvent) => {
       if (e.key === CASES_KEY) sync();
     };
     window.addEventListener("storage", onStorage);
     return () => {
+      cancelled = true;
       window.clearInterval(poll);
       window.removeEventListener("storage", onStorage);
     };
@@ -253,6 +286,12 @@ export function useCockpit(): Cockpit {
         mlro: "Escalated to MLRO",
         dismiss: "Dismissed, no action",
       };
+      // Live mode: persist the decision to the backend audit trail too. Fire and
+      // forget with errors swallowed; the local update below is the demo source of
+      // truth and must stand even if the backend is slow or offline.
+      if (USE_BACKEND) {
+        api.decide(selectedId, DECISION_TO_ACTION[decision], labels[decision]).catch(() => {});
+      }
       update(selectedId, (x) => {
         x.status = "decided";
         x.decision = decision;

@@ -67,6 +67,18 @@ windows in sync, which is what makes the live first-line/second-line handoff dem
 path that mutates a case is a user action (escalate, handover, decide, confirm, send message), each
 appending an audit entry; nothing is ever deleted from the audit trail.
 
+### Live mode (opt-in)
+
+Set `NEXT_PUBLIC_USE_BACKEND=true` to drive the cockpit from the FastAPI backend instead of the
+seed. On mount `use-cockpit.ts` then calls `api.listAlerts()` (running the pipeline once if the
+store is empty), fetches each `Alert`, and adapts it to a cockpit `Case` via `alert-to-case.ts`
+(`alertToCase`); on any failure or the 700ms timeout it keeps the local/seed state, so the demo
+never blocks on a dead backend. Compliance `decide()` also POSTs to the backend
+(`DECISION_TO_ACTION` maps the cockpit decision to the narrower backend action), but the local
+update remains the demo source of truth. The other transitions (escalate, handover, handback,
+messaging) have no backend endpoint and stay frontend-only on `localStorage` + cross-window sync.
+The default (flag off) is unchanged: a self-contained mock with all seven cases.
+
 ## Contract (api.ts <-> schemas.py)
 
 `lib/api.ts` mirrors `backend/schemas.py` (snake_case JSON; `DriftDimension` uses the `from`/`to`

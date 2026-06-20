@@ -4,9 +4,11 @@ import { useCockpit } from "@/lib/use-cockpit";
 import { seedCases } from "@/lib/cockpit-seed";
 import { decided } from "@/test/cockpit-helpers";
 import type { Case } from "@/lib/cockpit-types";
+import type { Alert, AlertRow } from "@/lib/api";
 
 const CASES_KEY = "dw_p1_cases_v2";
 const ROLE_KEY = "dw_p1_role";
+const BASE = "http://localhost:8000";
 
 function storedCases(): Case[] {
   return JSON.parse(localStorage.getItem(CASES_KEY) || "[]") as Case[];
@@ -244,5 +246,148 @@ describe("useCockpit cross-window sync", () => {
     act(() => vi.advanceTimersByTime(1100));
 
     expect(caseById(result.current.cases, "lago").decision).toBe("dismiss");
+  });
+});
+
+// Live backend mode (NEXT_PUBLIC_USE_BACKEND=true). The flag is read once at module
+// load, so each test stubs the env, resets the module registry, and dynamically
+// imports a fresh useCockpit. fetch is stubbed (no real backend); real timers let the
+// async hydration promises settle.
+describe("useCockpit live backend mode", () => {
+  function okJson(payload: unknown): Response {
+    return { ok: true, status: 200, statusText: "OK", json: async () => payload } as Response;
+  }
+
+  function liveRow(): AlertRow {
+    return {
+      id: "helvetia",
+      client_name: "Helvetia SaaS GmbH",
+      risk_band: "LOW -> HIGH",
+      top_change: "Crypto pivot",
+      status: "needs_review",
+      recommended_action: "escalate",
+      analysis_depth: 3,
+      cost: { tokens_in: 1, tokens_out: 1, usd: 0.01 },
+      created_at: "2026-06-20T08:00:00Z",
+    };
+  }
+
+  function liveAlert(): Alert {
+    return {
+      ...liveRow(),
+      client_id: "helvetia",
+      implies: "Material KYC change",
+      drift_score: {
+        client_id: "helvetia",
+        aggregate: 0.85,
+        band: "high",
+        confidence: 0.8,
+        invalidated_assumptions: [],
+        per_dimension: [],
+      },
+      signals: [],
+      baseline: {
+        client_id: "helvetia",
+        business_model: "B2B SaaS",
+        expected_activity: "",
+        expected_volume_band: "low",
+        owners: [],
+        legal_form: "GmbH",
+        domain: "helvetia-saas.ch",
+        risk_rating: "LOW",
+      },
+      current: {
+        client_id: "helvetia",
+        business_model: "Crypto OTC desk",
+        expected_activity: "",
+        expected_volume_band: "high",
+        owners: [],
+        legal_form: "AG",
+        domain: "helvetia-otc.io",
+        risk_rating: "HIGH",
+      },
+      audit: [],
+    };
+  }
+
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  // Resolve fetch by URL/method so list, run, detail, and decision all answer.
+  function routeFetch(): void {
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      const u = String(url);
+      if (u.endsWith("/api/alerts")) return okJson([liveRow()]);
+      if (u.endsWith("/api/run")) return okJson({ alerts: [liveRow()] });
+      if (u.endsWith("/decision") && init?.method === "POST") return okJson(liveAlert());
+      if (u.includes("/api/alerts/")) return okJson(liveAlert());
+      return okJson({});
+    });
+  }
+
+  const flush = () => new Promise((r) => setTimeout(r, 0));
+
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+    vi.useRealTimers(); // the global beforeEach set fake timers; the async hydration needs real ones
+    vi.stubEnv("NEXT_PUBLIC_USE_BACKEND", "true");
+    vi.resetModules();
+    fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
+
+  async function mountLive() {
+    const mod = await import("@/lib/use-cockpit");
+    return renderHook(() => mod.useCockpit());
+  }
+
+  it("hydrates cases from the backend on mount", async () => {
+    routeFetch();
+    let result!: Awaited<ReturnType<typeof mountLive>>["result"];
+    await act(async () => {
+      ({ result } = await mountLive());
+      await flush();
+    });
+    expect(result.current.cases.map((c) => c.id)).toEqual(["helvetia"]);
+    expect(caseById(result.current.cases, "helvetia").client).toBe("Helvetia SaaS GmbH");
+    expect(caseById(result.current.cases, "helvetia").band).toBe("HIGH");
+    expect(fetchMock).toHaveBeenCalledWith(`${BASE}/api/alerts`, expect.anything());
+  });
+
+  it("decide posts the mapped backend action and still updates local state", async () => {
+    routeFetch();
+    let result!: Awaited<ReturnType<typeof mountLive>>["result"];
+    await act(async () => {
+      ({ result } = await mountLive());
+      await flush();
+    });
+    act(() => result.current.pick("compliance"));
+    act(() => result.current.select("helvetia"));
+    await act(async () => {
+      result.current.decide("watchlist"); // cockpit watchlist -> backend escalate
+      await flush();
+    });
+    const decisionCall = fetchMock.mock.calls.find(([u]) =>
+      String(u).endsWith("/api/alerts/helvetia/decision"),
+    );
+    expect(decisionCall).toBeTruthy();
+    expect(JSON.parse(decisionCall![1].body as string)).toMatchObject({ action: "escalate" });
+    expect(caseById(storedCases(), "helvetia").decision).toBe("watchlist");
+    expect(caseById(storedCases(), "helvetia").status).toBe("decided");
+  });
+
+  it("falls back to the local seed when the backend is unreachable", async () => {
+    fetchMock.mockRejectedValue(new Error("ECONNREFUSED"));
+    let result!: Awaited<ReturnType<typeof mountLive>>["result"];
+    await act(async () => {
+      ({ result } = await mountLive());
+      await flush();
+    });
+    expect(result.current.cases).toHaveLength(seedCases().length);
   });
 });
