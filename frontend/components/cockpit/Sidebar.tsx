@@ -15,20 +15,18 @@ export function Sidebar({ nav }: { nav: NavItemVM[] }) {
         OVERVIEW
       </div>
       {nav.map((n) => (
-        <div
-          key={n.label}
-          className="flex select-none items-center justify-between px-[10px] py-[5px] text-[13px]"
-          style={{ color: "oklch(0.45 0 0)" }}
-        >
-          <span>{n.label}</span>
-          {n.hasCount && (
-            <span
-              className="rounded-full px-[7px] py-[1px] font-mono text-[10px]"
-              style={{ background: n.countBg, color: n.countColor }}
-            >
-              {n.count}
-            </span>
-          )}
+        // Number-first, read-only: the count is plain typography in a fixed left column, not a
+        // coloured badge, so the block reads as a stat readout rather than clickable nav.
+        <div key={n.label} className="flex select-none items-center gap-[9px] px-[8px] py-[4px]">
+          <span
+            className="min-w-[18px] flex-none text-right font-mono text-[13px] font-medium tabular-nums"
+            style={{ color: n.hasCount ? "oklch(0.3 0 0)" : "oklch(0.8 0 0)" }}
+          >
+            {n.hasCount ? n.count : "-"}
+          </span>
+          <span className="text-[12px]" style={{ color: n.hasCount ? "oklch(0.45 0 0)" : "oklch(0.6 0 0)" }}>
+            {n.label}
+          </span>
         </div>
       ))}
       <div className="flex-1" />
@@ -42,10 +40,16 @@ export function Sidebar({ nav }: { nav: NavItemVM[] }) {
             1st · RM + AM (business)
           </span>
         </div>
-        <div className="flex items-center gap-[7px]">
+        <div className="mb-[5px] flex items-center gap-[7px]">
           <span className="h-2 w-2 rounded-[2px]" style={{ background: "#e24b4a" }} />
           <span className="text-[11px]" style={{ color: "oklch(0.45 0 0)" }}>
             2nd · Compliance (control)
+          </span>
+        </div>
+        <div className="flex items-center gap-[7px]">
+          <span className="h-2 w-2 rounded-[2px]" style={{ background: "#6d5dd3" }} />
+          <span className="text-[11px]" style={{ color: "oklch(0.45 0 0)" }}>
+            3rd · MLRO (reporting)
           </span>
         </div>
       </div>

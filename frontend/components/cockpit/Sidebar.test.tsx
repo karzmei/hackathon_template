@@ -28,10 +28,10 @@ describe("Sidebar", () => {
     }
   });
 
-  it("shows a count badge only when the item has a count", () => {
+  it("shows the count as a plain numeral only when the item has a count", () => {
     render(<Sidebar nav={navFor("rm")} />);
     expect(within(row("My clients")).getByText("5")).toBeInTheDocument(); // five RM-owned clients
-    // The digest entry hides its count; only the label is present.
+    // The digest entry has no count; it shows a dash placeholder, never a zero.
     expect(within(row("Morning digest")).queryByText("0")).toBeNull();
   });
 
@@ -50,6 +50,7 @@ describe("Sidebar", () => {
     expect(screen.getByText("LINES OF DEFENCE")).toBeInTheDocument();
     expect(screen.getByText("1st · RM + AM (business)")).toBeInTheDocument();
     expect(screen.getByText("2nd · Compliance (control)")).toBeInTheDocument();
+    expect(screen.getByText("3rd · MLRO (reporting)")).toBeInTheDocument();
     expect(screen.getByText(/SYNCED ACROSS THE TEAM/)).toBeInTheDocument();
   });
 });

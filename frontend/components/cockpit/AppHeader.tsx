@@ -40,10 +40,9 @@ export function AppHeader({ view, onLogout }: { view: CockpitView; onLogout: () 
               />
             )}
             Inbox{" "}
-            <span
-              className="rounded-full px-2 py-[1px] font-mono text-[11px]"
-              style={{ background: "#fcebeb", color: "#501313", border: "1px solid #e24b4a" }}
-            >
+            {/* Plain numeral, not a badge: this is a read-only count; the pulse above carries the
+                unread-attention cue. */}
+            <span className="font-mono text-[12px] font-medium tabular-nums" style={{ color: "oklch(0.3 0 0)" }}>
               {view.inboxCount}
             </span>
           </div>

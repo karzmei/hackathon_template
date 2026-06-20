@@ -157,24 +157,12 @@ export interface NavItemVM {
   label: string;
   count: number;
   hasCount: boolean;
-  countBg: string;
-  countColor: string;
 }
 
-export function navItem(
-  label: string,
-  count: number,
-  showCount: boolean,
-  countTone?: ToneName,
-): NavItemVM {
-  const ct = countTone ? TONES[countTone] : null;
-  return {
-    label,
-    count,
-    hasCount: showCount,
-    countBg: ct ? ct.bg : "oklch(0.205 0 0)",
-    countColor: ct ? ct.text : "#fff",
-  };
+// Counts render as plain numerals (a number-first read-only readout), not coloured
+// badges, so the block does not read as clickable nav; tone is intentionally dropped.
+export function navItem(label: string, count: number, showCount: boolean): NavItemVM {
+  return { label, count, hasCount: showCount };
 }
 
 export interface ActorButton {
@@ -410,8 +398,8 @@ export function buildView({ role, cases, selectedId, msgTo }: ViewInput): Cockpi
     nav = [
       navItem("Morning digest", 0, false),
       navItem("My clients", cases.filter((c) => c.owner === "rm").length, true),
-      navItem("Escalated by me", flagged, flagged > 0, "info"),
-      navItem("Compliance requests", instr, instr > 0, "warning"),
+      navItem("Escalated by me", flagged, flagged > 0),
+      navItem("Compliance requests", instr, instr > 0),
     ];
   } else if (role === "am") {
     const handed = cases.filter((c) => c.owner === "am" && c.status === "handed_to_am").length;
@@ -419,17 +407,17 @@ export function buildView({ role, cases, selectedId, msgTo }: ViewInput): Cockpi
     nav = [
       navItem("Structural watch", 0, false),
       navItem("Accounts I own", cases.filter((c) => c.owner === "am").length, true),
-      navItem("Handed to me", handed, handed > 0, "info"),
-      navItem("Escalated by me", esc, esc > 0, "info"),
+      navItem("Handed to me", handed, handed > 0),
+      navItem("Escalated by me", esc, esc > 0),
     ];
   } else if (role === "compliance") {
     const need = cases.filter((c) => inboxElig(c) && c.status !== "decided").length;
     const review = cases.filter((c) => c.status === "in_compliance_review").length;
     const decided = cases.filter((c) => c.status === "decided").length;
     nav = [
-      navItem("Inbox", need, true, "danger"),
-      navItem("In review", review, review > 0, "info"),
-      navItem("Decided", decided, decided > 0, "success"),
+      navItem("Inbox", need, true),
+      navItem("In review", review, review > 0),
+      navItem("Decided", decided, decided > 0),
       navItem("Audit log", 0, false),
     ];
   }

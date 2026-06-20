@@ -114,17 +114,10 @@ describe("navItem", () => {
     expect(item.hasCount).toBe(false);
   });
 
-  it("applies the count tone colours when given", () => {
-    const item = navItem("Inbox", 3, true, "danger");
+  it("carries the raw count as plain data when shown", () => {
+    const item = navItem("Inbox", 3, true);
     expect(item.hasCount).toBe(true);
-    expect(item.countBg).toBe(TONES.danger.bg);
-    expect(item.countColor).toBe(TONES.danger.text);
-  });
-
-  it("falls back to the dark count chip without a tone", () => {
-    const item = navItem("My clients", 5, true);
-    expect(item.countBg).toBe("oklch(0.205 0 0)");
-    expect(item.countColor).toBe("#fff");
+    expect(item.count).toBe(3);
   });
 });
 

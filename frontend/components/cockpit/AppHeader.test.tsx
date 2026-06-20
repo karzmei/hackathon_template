@@ -18,14 +18,14 @@ describe("AppHeader", () => {
     expect(screen.getByText("1ST LINE · BUSINESS")).toBeInTheDocument();
   });
 
-  it("shows the Compliance inbox pill with the unread pulse and count", () => {
+  it("shows the Compliance inbox indicator with the unread pulse and count", () => {
     render(<AppHeader view={headerView("compliance")} onLogout={() => {}} />);
     expect(screen.getByText("Inbox")).toBeInTheDocument();
     expect(screen.getByText("1")).toBeInTheDocument(); // one seeded unread case
     expect(screen.getByLabelText("unread escalations")).toBeInTheDocument();
   });
 
-  it("hides the inbox pill for the first-line roles", () => {
+  it("hides the inbox indicator for the first-line roles", () => {
     render(<AppHeader view={headerView("rm")} onLogout={() => {}} />);
     expect(screen.queryByText("Inbox")).toBeNull();
   });
