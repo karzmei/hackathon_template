@@ -98,3 +98,39 @@ market). Build something with an obvious business case.
 - Don't pitch the system as a decision-maker; it advises.
 - Keep it inside their architecture (Teams/Microsoft, Azure CH); integration is fine if it
   doesn't force new infra.
+
+Our build decisions (based on the interview)
+Frontend: explicit user-role switcher (do this)
+Add a clear role picker at the top of the dashboard with three personas, each showing only the info most relevant to them. This directly mirrors AMINA's pyramid and makes the demo legible to whichever judge is watching.
+
+Relationship Manager (default view) — client-centric. Their book of clients, each with a morning digest of news + key facts, "what changed" since last look, and a flag-to-compliance action. First line of defense; they triage. Keep it simple and visual.
+Account Manager — account/business-centric. Whole-account view for complex clients, structural and ownership changes, cross-company exposure, anything that looks like a client gaming loopholes. Fewer, deeper cases.
+Compliance Officer — risk/audit-centric. Only negative facts and negative-direction changes, ranked by materiality, each with a concrete recommended action (e.g. add to watchlist, trigger re-KYC, escalate) and a full timestamped audit trail. No confidence scores up front; lead with the fact and the action.
+
+Same underlying data, three lenses. One toggle, instant switch, in the demo.
+Tech: how we stay inside token limits
+The hard constraint is Azure Switzerland rate limits (~5M tokens/min, counting input and output) and the fact that multi-agent chatter and caching tokens blow the budget fast. Design for this from the start.
+
+Cheap-filter-first cascade (rules + embeddings → small model → big model only on the few survivors). Most signals never reach an LLM. This is our cost story.
+No chatty multi-agent loops. One pass per stage, structured handoffs, not agents talking to each other. That's what burned their budget.
+Batch, not streaming. Run once or twice a day (a ~7am digest), so token spend is predictable and bounded, not continuous.
+Pre-filter public data before the model sees it. Dedup, relevance-to-client, materiality threshold. Don't send 100 articles to an LLM when 5 are relevant and maybe 0 add risk.
+Track and show tokens + cost per alert in the UI. Turns the constraint into a selling point and proves we respect their limits.
+Stack: Azure OpenAI in the Switzerland region (data residency provable in CH). Avoid self-hosting (~10k/month GPU) and the rough edges of MS AI Foundry.
+
+Pitch: what to frame as the problem and the value
+Problems to pitch (their words, not ours):
+
+Compliance is a cost center doing the yearly legal minimum, so risk goes stale between reviews; today they'd be stuck saying "we reviewed 5 months ago and it was clean."
+They can't grow the book without compliance cost exploding (manual cost scales with clients; there's a breaking point).
+Adverse-media reading is the #1 grind (common-name needle-in-haystack).
+Periodic reviews cause crunch and overtime spikes with no way to see it coming.
+
+Value to pitch (lead with these):
+
+Scale the book without scaling headcount — the real economic driver.
+Smooth the workload, not just cut it — continuous early signals let them distribute work ahead of time instead of crunching. This is the non-obvious win nobody is against; emphasize it.
+Catch high-profile / reputational risk months earlier, avoiding the FINMA "everyone could have known and you didn't" call.
+Automated adverse-media triage for their biggest time sink.
+
+Pitch guardrails: the system suggests, never decides; lead with concrete facts and concrete actions, not confidence scores; show the audit trail; use a China/HK geopolitical or publicly-listed crypto exchange scenario as the demo, since those landed well.
