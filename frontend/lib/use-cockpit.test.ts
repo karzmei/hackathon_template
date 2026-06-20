@@ -109,6 +109,31 @@ describe("useCockpit actions persist and audit", () => {
     expect(c.amUnread).toBe(true);
   });
 
+  it("handback returns an AM-owned case to the RM (FJ3 reverse)", () => {
+    const { result } = renderHook(() => useCockpit());
+    act(() => result.current.pick("am"));
+    act(() => result.current.select("nordwind")); // seeded owner: am
+    const before = caseById(result.current.cases, "nordwind").audit.length;
+    act(() => result.current.handback());
+    const c = caseById(storedCases(), "nordwind");
+    expect(c.owner).toBe("rm");
+    expect(c.status).toBe("open");
+    expect(c.audit.length).toBe(before + 1);
+    expect(c.audit.at(-1)?.action).toMatch(/Handed back to Relationship Manager/);
+  });
+
+  it("markReviewed closes a quiet case with no change (FJ7)", () => {
+    const { result } = renderHook(() => useCockpit());
+    act(() => result.current.pick("rm"));
+    act(() => result.current.select("alpenrose")); // seeded quiet, owner: rm
+    const before = caseById(result.current.cases, "alpenrose").audit.length;
+    act(() => result.current.markReviewed());
+    const c = caseById(storedCases(), "alpenrose");
+    expect(c.status).toBe("reviewed");
+    expect(c.audit.length).toBe(before + 1);
+    expect(c.audit.at(-1)?.action).toMatch(/Reviewed, no change/);
+  });
+
   it("sendMsg appends a message to the case thread", () => {
     const { result } = renderHook(() => useCockpit());
     act(() => result.current.pick("rm"));
