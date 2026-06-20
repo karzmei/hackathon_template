@@ -22,3 +22,11 @@ playwright-report/
 .claude/*
 # Share project agent skills with the team; keep personal Claude config local
 !.claude/skills/
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules
+frontend/.ds-css/
+frontend/.ds-entry.tsx
+frontend/.ds-process-shim.ts

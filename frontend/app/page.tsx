@@ -1,111 +1,71 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import type { Alert, AlertRow, CostToday } from "@/lib/api";
-import * as data from "@/lib/data";
-import { mockSignalsToday } from "@/lib/mock";
-import { CockpitHeader } from "@/components/CockpitHeader";
-import { QueueRail } from "@/components/QueueRail";
-import { DetailPane } from "@/components/DetailPane";
+import { useCockpit } from "@/lib/use-cockpit";
+import { buildView } from "@/lib/cockpit-view";
+import type { Decision } from "@/lib/cockpit-types";
+import { LoginScreen } from "@/components/cockpit/LoginScreen";
+import { AppHeader } from "@/components/cockpit/AppHeader";
+import { Sidebar } from "@/components/cockpit/Sidebar";
+import { CaseList } from "@/components/cockpit/CaseList";
+import { CaseDetail } from "@/components/cockpit/CaseDetail";
 
-// The cockpit: queue rail + case-file detail on one screen, driven by the mock-first
-// data layer so it runs whether or not the backend is up.
+const DECISIONS: Decision[] = ["re_kyc", "doc_request", "watchlist", "mlro", "dismiss"];
+
+// The cockpit. A single page owning the state machine (via useCockpit) and routing
+// detail-pane button keys to the matching action. Renders the seat picker until a
+// role is chosen, then the role-aware app shell.
 export default function Cockpit() {
-  const [rows, setRows] = useState<AlertRow[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [alert, setAlert] = useState<Alert | null>(null);
-  const [cost, setCost] = useState<CostToday | null>(null);
-  const [running, setRunning] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const c = useCockpit();
+  const view = buildView({ role: c.role, cases: c.cases, selectedId: c.selectedId, msgTo: c.msgTo });
 
-  const refresh = useCallback(async () => {
-    const [nextRows, nextCost] = await Promise.all([
-      data.loadAlertRows(),
-      data.loadCostToday(),
-    ]);
-    setRows(nextRows);
-    setCost(nextCost);
-    return nextRows;
-  }, []);
-
-  useEffect(() => {
-    refresh()
-      .then((nextRows) => {
-        setSelectedId((prev) => prev ?? nextRows[0]?.id ?? null);
-        setError(null);
-      })
-      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load"));
-  }, [refresh]);
-
-  useEffect(() => {
-    if (!selectedId) {
-      setAlert(null);
-      return;
-    }
-    let active = true;
-    data
-      .loadAlert(selectedId)
-      .then((a) => {
-        if (active) setAlert(a);
-      })
-      .catch(() => {
-        if (active) setAlert(null);
-      });
-    return () => {
-      active = false;
-    };
-  }, [selectedId]);
-
-  async function run() {
-    setRunning(true);
-    setError(null);
-    try {
-      await data.runPipeline();
-      const nextRows = await refresh();
-      setSelectedId((prev) => prev ?? nextRows[0]?.id ?? null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Run failed");
-    } finally {
-      setRunning(false);
-    }
+  // Dispatch a CaseDetail actor-button key to the corresponding hook action.
+  function onAction(key: string) {
+    if (key === "escalate") return c.escalateCompliance();
+    if (key === "handover") return c.handover();
+    if (key === "handback") return c.handback();
+    if (key === "reviewed") return c.markReviewed();
+    if ((DECISIONS as string[]).includes(key)) return c.decide(key as Decision);
   }
 
-  async function onDecided() {
-    await refresh();
-    if (selectedId) {
-      const updated = await data.loadAlert(selectedId).catch(() => null);
-      setAlert(updated);
-    }
+  if (!c.ready) {
+    return <div className="flex h-screen w-full flex-col bg-white" />;
   }
 
-  const deep = rows.filter((r) => r.analysis_depth >= 3).length;
+  if (view.isLogin) {
+    return (
+      <div className="flex h-screen w-full flex-col bg-white">
+        <LoginScreen onPick={c.pick} />
+      </div>
+    );
+  }
 
   return (
-    <div className="flex h-screen flex-col bg-card">
-      <CockpitHeader
-        usd={cost?.usd ?? 0}
-        signals={mockSignalsToday}
-        alerts={rows.length}
-        deep={deep}
-        running={running}
-        onRun={run}
-      />
-      {error && (
-        <p className="border-b bg-destructive/5 px-6 py-2 text-sm text-destructive">
-          {error}
-        </p>
-      )}
-      <div className="grid min-h-0 flex-1 grid-cols-[392px_1fr]">
-        <QueueRail rows={rows} selectedId={selectedId} onSelect={setSelectedId} />
-        {alert ? (
-          <DetailPane alert={alert} onDecided={onDecided} />
-        ) : (
-          <div className="flex items-center justify-center p-10 text-sm text-muted-foreground">
-            {rows.length === 0
-              ? "No alerts yet. Click Run pipeline to ingest signals and score drift."
-              : "Select a client from the queue to open its case file."}
+    <div className="flex h-screen w-full flex-col bg-white">
+      <AppHeader view={view} onLogout={c.logout} />
+      <div className="flex min-h-0 flex-1">
+        <Sidebar nav={view.nav} />
+        <div className="flex min-w-0 flex-1">
+          <CaseList view={view} onSelect={c.select} />
+          <div className="min-w-0 flex-1 overflow-y-auto bg-white">
+            {view.hasDetail && view.detail ? (
+              <CaseDetail
+                detail={view.detail}
+                recipients={view.msgRecipients}
+                msgDraft={c.msgDraft}
+                msgPlaceholder={view.msgPlaceholder}
+                onAction={onAction}
+                onConfirmInstruction={c.confirmInstruction}
+                onPickRecipient={c.setMsgTo}
+                onMsgChange={c.setMsgDraft}
+                onSend={c.sendMsg}
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center text-[13px]" style={{ color: "oklch(0.62 0 0)" }}>
+                Select a case to open it.
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
