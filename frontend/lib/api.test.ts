@@ -82,6 +82,17 @@ describe("api client", () => {
     expect(url).toBe(`${BASE}/api/cost/today`);
   });
 
+  it("costDashboard GETs /api/cost/dashboard and returns the parsed payload", async () => {
+    const payload = { generated_at: "x", totals: { usd: 0, alerts: 0 }, by_stage: [], by_client: [] };
+    fetchMock.mockResolvedValue(okJson(payload));
+
+    const result = await api.costDashboard();
+
+    expect(result).toEqual(payload);
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toBe(`${BASE}/api/cost/dashboard`);
+  });
+
   it("omits the Content-Type header on GETs to avoid a CORS preflight", async () => {
     fetchMock.mockResolvedValue(okJson([]));
 
