@@ -66,6 +66,18 @@ def publicai_configured() -> bool:
     return bool(os.environ.get("PUBLICAI_API_KEY", ""))
 
 
+# --- MLX local inference (commented out; run mlx_lm.server to re-enable) ---
+# MLX_BASE_URL = os.environ.get("MLX_BASE_URL", "http://localhost:1234/v1")
+# MLX_MODEL = "mlx-community/Apertus-8B-Instruct-2509-4bit"
+# def mlx_configured() -> bool:
+#     import urllib.request
+#     try:
+#         urllib.request.urlopen(MLX_BASE_URL.replace("/v1", "/health"), timeout=1)
+#         return True
+#     except Exception:
+#         return False
+
+
 def price_for(model: str) -> tuple[float, float]:
     # Callers pass provider-qualified names like "azure/gpt-4.1-mini"; the table
     # is keyed by the bare deployment/model name, so strip a leading provider.

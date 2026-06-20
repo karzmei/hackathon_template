@@ -206,6 +206,16 @@ async def run_agent(
                 model=model, offline=False,
             )
 
+        # --- MLX local inference (uncomment to enable; run mlx_lm.server first) ---
+        # if config.mlx_configured():
+        #     model = config.MLX_MODEL
+        #     text, tokens_in, tokens_out = await _with_retry(
+        #         _run_with_openai, prompt, model, system_instruction,
+        #         api_base=config.MLX_BASE_URL, api_key="mlx",
+        #     )
+        #     return LlmResult(text=text, tokens_in=tokens_in, tokens_out=tokens_out,
+        #                      usd=0.0, model=f"local/{model}", offline=False)
+
     except Exception:
         pass  # all retries exhausted; fall through to offline stub
 
