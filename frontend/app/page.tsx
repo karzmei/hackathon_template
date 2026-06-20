@@ -1,52 +1,68 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
-import { Loader2, Play } from "lucide-react";
-import { api, AlertRow, CostToday } from "@/lib/api";
-import { StatusPill } from "@/components/StatusPill";
-import { CostMeter } from "@/components/CostMeter";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { SeverityBadge } from "@/components/ui/severity-badge";
-import { bandAccentVar } from "@/lib/risk";
+import type { Alert, AlertRow, CostToday } from "@/lib/api";
+import * as data from "@/lib/data";
+import { mockSignalsToday } from "@/lib/mock";
+import { CockpitHeader } from "@/components/CockpitHeader";
+import { QueueRail } from "@/components/QueueRail";
+import { DetailPane } from "@/components/DetailPane";
 
-function rowTone(riskBand: string) {
-  if (riskBand.includes("HIGH")) return "danger" as const;
-  if (riskBand.includes("MEDIUM")) return "warning" as const;
-  return "success" as const;
-}
-
-export default function QueuePage() {
+// The cockpit: queue rail + case-file detail on one screen, driven by the mock-first
+// data layer so it runs whether or not the backend is up.
+export default function Cockpit() {
   const [rows, setRows] = useState<AlertRow[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [alert, setAlert] = useState<Alert | null>(null);
   const [cost, setCost] = useState<CostToday | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    try {
-      const [alerts, costToday] = await Promise.all([
-        api.listAlerts(),
-        api.costToday(),
-      ]);
-      setRows(alerts);
-      setCost(costToday);
-      setError(null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load");
-    }
+    const [nextRows, nextCost] = await Promise.all([
+      data.loadAlertRows(),
+      data.loadCostToday(),
+    ]);
+    setRows(nextRows);
+    setCost(nextCost);
+    return nextRows;
   }, []);
 
   useEffect(() => {
-    refresh();
+    refresh()
+      .then((nextRows) => {
+        setSelectedId((prev) => prev ?? nextRows[0]?.id ?? null);
+        setError(null);
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load"));
   }, [refresh]);
+
+  useEffect(() => {
+    if (!selectedId) {
+      setAlert(null);
+      return;
+    }
+    let active = true;
+    data
+      .loadAlert(selectedId)
+      .then((a) => {
+        if (active) setAlert(a);
+      })
+      .catch(() => {
+        if (active) setAlert(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [selectedId]);
 
   async function run() {
     setRunning(true);
     setError(null);
     try {
-      await api.runPipeline();
-      await refresh();
+      await data.runPipeline();
+      const nextRows = await refresh();
+      setSelectedId((prev) => prev ?? nextRows[0]?.id ?? null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Run failed");
     } finally {
@@ -54,75 +70,43 @@ export default function QueuePage() {
     }
   }
 
+  async function onDecided() {
+    await refresh();
+    if (selectedId) {
+      const updated = await data.loadAlert(selectedId).catch(() => null);
+      setAlert(updated);
+    }
+  }
+
+  const deep = rows.filter((r) => r.analysis_depth >= 3).length;
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="font-serif text-2xl font-semibold tracking-tight">
-          Alert queue
-        </h1>
-        <div className="flex items-center gap-4">
-          {cost && (
-            <CostMeter
-              cost={{
-                tokens_in: cost.tokens_in,
-                tokens_out: cost.tokens_out,
-                usd: cost.usd,
-              }}
-              label="today"
-            />
-          )}
-          <Button variant="brand" size="lg" onClick={run} disabled={running}>
-            {running ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <Play />
-            )}
-            {running ? "Running pipeline..." : "Run pipeline"}
-          </Button>
-        </div>
-      </div>
-
-      {error && <p className="text-sm text-destructive">{error}</p>}
-
-      {rows.length === 0 ? (
-        <p className="text-muted-foreground">
-          No alerts yet. Click <strong>Run pipeline</strong> to ingest signals
-          and score drift.
+    <div className="flex h-screen flex-col bg-card">
+      <CockpitHeader
+        usd={cost?.usd ?? 0}
+        signals={mockSignalsToday}
+        alerts={rows.length}
+        deep={deep}
+        running={running}
+        onRun={run}
+      />
+      {error && (
+        <p className="border-b bg-destructive/5 px-6 py-2 text-sm text-destructive">
+          {error}
         </p>
-      ) : (
-        <ul className="space-y-3">
-          {rows.map((row) => (
-            <li key={row.id}>
-              <Link href={`/alerts/${row.id}`} className="block">
-                <Card
-                  className="transition-colors hover:bg-muted/40"
-                  style={{
-                    borderLeft: `4px solid ${bandAccentVar(row.risk_band)}`,
-                  }}
-                >
-                  <div className="flex items-center justify-between gap-4 px-4">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-3">
-                        <span className="font-medium">{row.client_name}</span>
-                        <SeverityBadge
-                          tone={rowTone(row.risk_band)}
-                          label={row.risk_band}
-                          size="sm"
-                        />
-                        <StatusPill status={row.status} />
-                      </div>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {row.top_change}
-                      </p>
-                    </div>
-                    <CostMeter cost={row.cost} depth={row.analysis_depth} />
-                  </div>
-                </Card>
-              </Link>
-            </li>
-          ))}
-        </ul>
       )}
+      <div className="grid min-h-0 flex-1 grid-cols-[392px_1fr]">
+        <QueueRail rows={rows} selectedId={selectedId} onSelect={setSelectedId} />
+        {alert ? (
+          <DetailPane alert={alert} onDecided={onDecided} />
+        ) : (
+          <div className="flex items-center justify-center p-10 text-sm text-muted-foreground">
+            {rows.length === 0
+              ? "No alerts yet. Click Run pipeline to ingest signals and score drift."
+              : "Select a client from the queue to open its case file."}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

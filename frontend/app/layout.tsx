@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { Source_Serif_4 } from "next/font/google";
-import { Activity } from "lucide-react";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 
@@ -35,22 +33,8 @@ export default function RootLayout({
         sourceSerif.variable
       )}
     >
-      <body className="min-h-screen bg-background text-foreground antialiased">
-        <header className="border-b bg-card">
-          <div className="mx-auto flex max-w-5xl items-center gap-3 px-6 py-3">
-            <Link
-              href="/"
-              className="flex items-center gap-2 font-semibold tracking-tight"
-            >
-              <Activity className="size-4 text-foreground" />
-              DRIFTWATCH
-            </Link>
-            <span className="text-sm text-muted-foreground">
-              KYC drift intelligence
-            </span>
-          </div>
-        </header>
-        <main className="mx-auto max-w-5xl px-6 py-8">{children}</main>
+      <body className="h-screen overflow-hidden bg-background text-foreground antialiased">
+        {children}
       </body>
     </html>
   );

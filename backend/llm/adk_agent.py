@@ -36,6 +36,13 @@ def _estimate_tokens(text: str) -> int:
     return max(1, len(text) // 4)
 
 
+def _gemini_model_for(deployment: str) -> str:
+    """Map an Azure deployment hint to the equivalent Gemini tier."""
+    if deployment == config.DEPLOYMENT_DEEP:
+        return config.GEMINI_DEEP
+    return config.GEMINI_REASONING
+
+
 async def _run_with_litellm(
     prompt: str,
     model: str,
@@ -94,26 +101,16 @@ async def run_agent(
     `deployment` is the Azure deployment name or a hint used to select the
     equivalent Gemini model when Azure is unavailable.
     """
+    # Priority: Azure > Google Gemini > offline stub. Both online paths run the
+    # same turn and build the same result; only the model name is resolved differently.
+    model = None
     if config.azure_configured():
         model = f"azure/{deployment}"
-        text, tokens_in, tokens_out = await _run_with_litellm(prompt, model, system_instruction)
-        return LlmResult(
-            text=text,
-            tokens_in=tokens_in,
-            tokens_out=tokens_out,
-            usd=config.usd_for(model, tokens_in, tokens_out),
-            model=model,
-            offline=False,
-        )
-
-    if config.google_configured():
+    elif config.google_configured():
         os.environ.setdefault("GEMINI_API_KEY", config.GOOGLE_API_KEY)
-        # Map Azure deployment hint to equivalent Gemini tier.
-        model = (
-            config.GEMINI_DEEP
-            if deployment == config.DEPLOYMENT_DEEP
-            else config.GEMINI_REASONING
-        )
+        model = _gemini_model_for(deployment)
+
+    if model is not None:
         text, tokens_in, tokens_out = await _run_with_litellm(prompt, model, system_instruction)
         return LlmResult(
             text=text,
@@ -124,7 +121,7 @@ async def run_agent(
             offline=False,
         )
 
-    text = offline_response or "[offline demo - no LLM key configured]"
+    text = offline_response or "[offline demo - no Azure or Google key configured]"
     tokens_in = _estimate_tokens(prompt + system_instruction)
     tokens_out = _estimate_tokens(text)
     return LlmResult(
