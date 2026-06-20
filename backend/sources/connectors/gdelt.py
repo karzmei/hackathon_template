@@ -29,7 +29,6 @@ def fetch(client_id: str) -> list[Signal]:
     """
 
     # Resolve client_id -> legal name using the demo seed clients.
-    print(seed.CLIENTS)
     try:
         legal_name = next(c.legal_name for c in seed.CLIENTS if c.id == client_id)
     except StopIteration:
