@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { useCockpit } from "@/lib/use-cockpit";
 import { seedCases } from "@/lib/cockpit-seed";
+import { decided } from "@/test/cockpit-helpers";
 import type { Case } from "@/lib/cockpit-types";
 
 const CASES_KEY = "dw_p1_cases_v2";
@@ -156,20 +157,70 @@ describe("useCockpit actions persist and audit", () => {
   });
 });
 
+describe("useCockpit edge cases", () => {
+  it("re-seeds a fresh book when stored JSON is malformed", () => {
+    localStorage.setItem(CASES_KEY, "{ not valid json");
+    const { result } = renderHook(() => useCockpit());
+    expect(result.current.cases).toHaveLength(seedCases().length);
+    expect(storedCases()).toHaveLength(seedCases().length); // valid seed written back
+  });
+
+  it("keeps the audit trail append-only across successive actions", () => {
+    const { result } = renderHook(() => useCockpit());
+    act(() => result.current.pick("compliance"));
+    const original = caseById(result.current.cases, "helvetia").audit[0];
+    act(() => result.current.select("helvetia")); // opening a flagged case logs an entry
+    const afterOpen = caseById(storedCases(), "helvetia").audit.length;
+    act(() => result.current.decide("re_kyc")); // a second entry
+    const after = caseById(storedCases(), "helvetia").audit;
+    expect(after.length).toBeGreaterThan(afterOpen);
+    expect(after[0]).toEqual(original); // earliest entry never mutated
+  });
+
+  it("resets the message draft when a different case is opened", () => {
+    const { result } = renderHook(() => useCockpit());
+    act(() => result.current.pick("rm"));
+    act(() => result.current.select("bernina"));
+    act(() => result.current.setMsgDraft("draft text"));
+    act(() => result.current.select("castor"));
+    expect(result.current.msgDraft).toBe("");
+  });
+
+  it("setMsgTo overrides the default recipient", () => {
+    const { result } = renderHook(() => useCockpit());
+    act(() => result.current.pick("rm"));
+    expect(result.current.msgTo).toBe("am");
+    act(() => result.current.setMsgTo("compliance"));
+    expect(result.current.msgTo).toBe("compliance");
+  });
+});
+
 describe("useCockpit cross-window sync", () => {
   it("picks up an external localStorage change via the storage event", () => {
     const { result } = renderHook(() => useCockpit());
     act(() => result.current.pick("rm"));
 
     // Simulate another window watch-listing Castor and writing the shared key.
-    const external = seedCases().map((c) =>
-      c.id === "castor" ? { ...c, status: "decided" as const, decision: "watchlist" as const } : c,
-    );
+    const external = decided("castor", "watchlist");
     act(() => {
       localStorage.setItem(CASES_KEY, JSON.stringify(external));
       window.dispatchEvent(new StorageEvent("storage", { key: CASES_KEY }));
     });
 
     expect(caseById(result.current.cases, "castor").decision).toBe("watchlist");
+  });
+
+  it("picks up an external change on the next poll tick without a storage event", () => {
+    const { result } = renderHook(() => useCockpit());
+    act(() => result.current.pick("compliance"));
+
+    const external = decided("lago", "dismiss");
+    act(() => {
+      localStorage.setItem(CASES_KEY, JSON.stringify(external));
+    });
+    // No storage event in this tab; the 1100ms poll reconciles the shared key.
+    act(() => vi.advanceTimersByTime(1100));
+
+    expect(caseById(result.current.cases, "lago").decision).toBe("dismiss");
   });
 });

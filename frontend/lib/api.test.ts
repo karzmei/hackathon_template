@@ -82,6 +82,24 @@ describe("api client", () => {
     expect(url).toBe(`${BASE}/api/cost/today`);
   });
 
+  it("omits the Content-Type header on GETs to avoid a CORS preflight", async () => {
+    fetchMock.mockResolvedValue(okJson([]));
+
+    await api.listAlerts();
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init?.headers).toBeUndefined();
+  });
+
+  it("sets the JSON Content-Type on mutating POSTs", async () => {
+    fetchMock.mockResolvedValue(okJson({ alerts: [] }));
+
+    await api.runPipeline();
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init?.headers).toMatchObject({ "Content-Type": "application/json" });
+  });
+
   it("throws with status and detail on a non-ok response", async () => {
     fetchMock.mockResolvedValue({
       ok: false,
@@ -91,5 +109,36 @@ describe("api client", () => {
     } as Response);
 
     await expect(api.getAlert("missing")).rejects.toThrow("API 404: alert not found");
+  });
+
+  it("falls back to the status text when the error body is not JSON", async () => {
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: "Internal Server Error",
+      json: async () => {
+        throw new Error("not json");
+      },
+    } as unknown as Response);
+
+    await expect(api.listAlerts()).rejects.toThrow("API 500: Internal Server Error");
+  });
+
+  it("aborts a request that outlives the timeout", async () => {
+    vi.useFakeTimers();
+    fetchMock.mockImplementation(
+      (_url: string, init?: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")));
+        }),
+    );
+
+    const pending = api.listAlerts();
+    // Attach the rejection handler before advancing timers so the abort that fires
+    // mid-advance is not flagged as an unhandled rejection.
+    const assertion = expect(pending).rejects.toThrow();
+    await vi.advanceTimersByTimeAsync(700);
+    await assertion;
+    vi.useRealTimers();
   });
 });

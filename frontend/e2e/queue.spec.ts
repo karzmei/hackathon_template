@@ -111,6 +111,20 @@ test("@smoke cross-window: an RM escalation reaches the Compliance window live",
   await context.close();
 });
 
+// AM lane: the Account Manager works an owned structural case and escalates it up.
+test("@smoke AM escalates an owned account to Compliance", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: /Marco Reuss/ }).click();
+  await expect(page.getByText("Accounts you own")).toBeVisible();
+
+  await page.getByRole("button", { name: /Nordwind Trading GmbH/ }).click();
+  await expect(page.getByRole("heading", { name: "Nordwind Trading GmbH" })).toBeVisible();
+
+  await page.getByRole("button", { name: /Escalate to Compliance/ }).click();
+  await expect(page.getByText("Escalated by AM · awaiting Compliance").first()).toBeVisible();
+  await expect(page.getByText(/Escalated to Compliance \(1st -> 2nd line\)/)).toBeVisible();
+});
+
 // FJ7 in docs/USER_JOURNEYS.md: a quiet client is reviewed with no change.
 test("@smoke RM reviews a quiet client with no change", async ({ page }) => {
   await page.goto("/");
