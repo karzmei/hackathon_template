@@ -49,7 +49,7 @@ def azure_configured() -> bool:
 
 
 def google_configured() -> bool:
-    return bool(GOOGLE_API_KEY)
+    return bool(os.environ.get("GOOGLE_API_KEY", ""))
 
 
 def price_for(model: str) -> tuple[float, float]:

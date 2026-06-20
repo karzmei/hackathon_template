@@ -58,8 +58,32 @@ def _owners_label(owners: list[Owner]) -> str:
     return f"{len(owners)} owners{suffix}"
 
 
+_RAW_KEY_TO_DIM: dict[str, Dimension] = {
+    "business_model": Dimension.business_model,
+    "domain": Dimension.domain,
+    "legal_form": Dimension.legal_form,
+    "expected_volume_band": Dimension.expected_volume,
+    "risk_rating": Dimension.risk_rating,
+    "add_owner": Dimension.ownership,
+}
+
+
+def _dim_confidence(signals: list[Signal]) -> dict[Dimension, float]:
+    """Return the max signal confidence for each dimension touched by the signal set."""
+    result: dict[Dimension, float] = {}
+    for signal in signals:
+        for key, dim in _RAW_KEY_TO_DIM.items():
+            if key in (signal.raw or {}):
+                result[dim] = max(result.get(dim, 0.0), signal.confidence)
+    return result
+
+
 def compute_drift(baseline: BaselineProfile, live: LiveProfile, signals: list[Signal]) -> DriftScore:
-    """Diff baseline vs live per dimension and aggregate into a drift score."""
+    """Diff baseline vs live per dimension and aggregate into a confidence-weighted drift score.
+
+    Each changed dimension contributes weight * signal_confidence rather than the
+    full weight, so a high-confidence registry change outweighs a speculative one.
+    """
     comparisons: list[tuple[Dimension, str, str]] = [
         (Dimension.business_model, baseline.business_model, live.business_model),
         (Dimension.ownership, _owners_label(baseline.owners), _owners_label(live.owners)),
@@ -69,18 +93,23 @@ def compute_drift(baseline: BaselineProfile, live: LiveProfile, signals: list[Si
         (Dimension.domain, baseline.domain, live.domain),
     ]
 
+    dim_conf = _dim_confidence(signals)
     per_dimension: list[DriftDimension] = []
     aggregate = 0.0
     invalidated: list[str] = []
+
     for dim, frm, to in comparisons:
         changed = frm != to
         weight = WEIGHTS[dim]
         if changed:
-            aggregate += weight
+            delta = dim_conf.get(dim, 1.0)
+            aggregate += weight * delta
             invalidated.append(f"{dim.value.replace('_', ' ')}: {frm} -> {to}")
+        else:
+            delta = 0.0
         per_dimension.append(
             DriftDimension.model_validate(
-                {"dimension": dim, "from": frm, "to": to, "delta": 1.0 if changed else 0.0, "weight": weight}
+                {"dimension": dim, "from": frm, "to": to, "delta": round(delta, 3), "weight": weight}
             )
         )
 

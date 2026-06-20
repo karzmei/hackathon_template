@@ -36,9 +36,9 @@
   "client_id": "helvetia",
   "client_name": "Helvetia SaaS GmbH",
   "cost": {
-    "tokens_in": 867,
+    "tokens_in": 865,
     "tokens_out": 201,
-    "usd": 0.002192
+    "usd": 0.002187
   },
   "created_at": "<normalized>",
   "current": {
@@ -68,7 +68,7 @@
     "risk_rating": "HIGH"
   },
   "drift_score": {
-    "aggregate": 1.0,
+    "aggregate": 0.8695,
     "band": "high",
     "client_id": "helvetia",
     "confidence": 0.843,
@@ -82,42 +82,42 @@
     ],
     "per_dimension": [
       {
-        "delta": 1.0,
+        "delta": 0.87,
         "dimension": "business_model",
         "from": "B2B SaaS",
         "to": "Crypto OTC desk",
         "weight": 0.25
       },
       {
-        "delta": 1.0,
+        "delta": 0.95,
         "dimension": "ownership",
         "from": "2 owners",
         "to": "3 owners (1 unscreened)",
         "weight": 0.2
       },
       {
-        "delta": 1.0,
+        "delta": 0.95,
         "dimension": "legal_form",
         "from": "GmbH",
         "to": "AG",
         "weight": 0.15
       },
       {
-        "delta": 1.0,
+        "delta": 0.8,
         "dimension": "expected_volume",
         "from": "low",
         "to": "high",
         "weight": 0.15
       },
       {
-        "delta": 1.0,
+        "delta": 0.75,
         "dimension": "risk_rating",
         "from": "LOW",
         "to": "HIGH",
         "weight": 0.15
       },
       {
-        "delta": 1.0,
+        "delta": 0.87,
         "dimension": "domain",
         "from": "helvetia-saas.ch",
         "to": "helvetia-otc.io",

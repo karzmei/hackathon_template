@@ -5,9 +5,15 @@ offline stub so the chain is exercised end to end.
 """
 
 import asyncio
+import os
 import unittest
 
 import store
+
+# Force offline mode so smoke tests never hit a real LLM endpoint.
+os.environ.pop("GOOGLE_API_KEY", None)
+os.environ.pop("GEMINI_API_KEY", None)
+os.environ.pop("AZURE_API_KEY", None)
 from data.seed import all_clients, baseline_for
 from pipeline.orchestrator import run_pipeline
 from schemas import RecommendedAction, RiskBand, RiskRating

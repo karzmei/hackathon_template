@@ -5,9 +5,15 @@ the decision/audit flow.
 """
 
 import asyncio
+import os
 import unittest
 
 import store
+
+# Force offline mode so smoke tests never hit a real LLM endpoint.
+os.environ.pop("GOOGLE_API_KEY", None)
+os.environ.pop("GEMINI_API_KEY", None)
+os.environ.pop("AZURE_API_KEY", None)
 from main import cost_today, decide, get_alert, list_alerts, run
 from schemas import AlertStatus, DecisionRequest, RecommendedAction
 
