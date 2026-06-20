@@ -12,7 +12,7 @@ from schemas import (
 )
 from sources.private_source import get_baseline
 from sources.public_source import fetch_public_signals
-from kyc_regular_update.kyc_schemas import TriggerAlert, TriggerRequest
+from kyc_checkup.kyc_schemas import TriggerAlert, TriggerRequest
 
 
 async def process_trigger(
