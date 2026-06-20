@@ -17,8 +17,9 @@ load_dotenv()
 
 
 # Azure deployment names (passed to LiteLLM as azure/<deployment>).
-DEPLOYMENT_REASONING = os.environ.get("AZURE_OPENAI_DEPLOYMENT_REASONING", "gpt-4o-mini")
-DEPLOYMENT_DEEP = os.environ.get("AZURE_OPENAI_DEPLOYMENT_DEEP", "gpt-4o")
+# Default to gpt-4.1-mini: the only deployment live on the SwissHacks Foundry project.
+DEPLOYMENT_REASONING = os.environ.get("AZURE_OPENAI_DEPLOYMENT_REASONING", "gpt-4.1-mini")
+DEPLOYMENT_DEEP = os.environ.get("AZURE_OPENAI_DEPLOYMENT_DEEP", "gpt-4.1-mini")
 
 # Google Gemini model names (passed to LiteLLM as gemini/<model>).
 GEMINI_REASONING = "gemini/gemini-2.5-flash"
@@ -32,8 +33,11 @@ GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
 
 # USD per 1k tokens (input, output). Keyed by deployment/model name.
 PRICING: dict[str, tuple[float, float]] = {
-    DEPLOYMENT_REASONING: (0.00015, 0.00060),   # gpt-4o-mini
-    DEPLOYMENT_DEEP: (0.0025, 0.0100),           # gpt-4o
+    DEPLOYMENT_REASONING: (0.00040, 0.00160),    # gpt-4.1-mini (live deployment)
+    DEPLOYMENT_DEEP: (0.00040, 0.00160),         # gpt-4.1-mini (same deployment)
+    "gpt-4.1-mini": (0.00040, 0.00160),          # explicit, in case env overrides differ
+    "gpt-4o-mini": (0.00015, 0.00060),
+    "gpt-4o": (0.0025, 0.0100),
     GEMINI_REASONING: (0.00015, 0.0035),          # gemini-2.5-flash
     GEMINI_DEEP: (0.00015, 0.0035),              # gemini-2.5-flash
 }
@@ -53,7 +57,10 @@ def google_configured() -> bool:
 
 
 def price_for(model: str) -> tuple[float, float]:
-    return PRICING.get(model, _DEFAULT_PRICE)
+    # Callers pass provider-qualified names like "azure/gpt-4.1-mini"; the table
+    # is keyed by the bare deployment/model name, so strip a leading provider.
+    key = model.split("/", 1)[-1] if "/" in model else model
+    return PRICING.get(model) or PRICING.get(key, _DEFAULT_PRICE)
 
 
 def usd_for(model: str, tokens_in: int, tokens_out: int) -> float:

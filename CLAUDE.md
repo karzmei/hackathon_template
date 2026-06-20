@@ -70,6 +70,14 @@ Request flow: `frontend/lib/api.ts` -> FastAPI routes in `backend/main.py` -> `p
   deep LLM narrative; step4 = human decision (the only path that mutates risk state, always writing
   an append-only audit event). Scoring weights and band thresholds are tunable in one place,
   `backend/drift_config.py`, so a tweak there moves every alert's band without touching step code.
+- **Deployments:** the SwissHacks Azure Foundry project has exactly one model deployed,
+  `gpt-4.1-mini`, so both `AZURE_OPENAI_DEPLOYMENT_REASONING` (step 2) and
+  `AZURE_OPENAI_DEPLOYMENT_DEEP` (step 3) point at it; there is no separate deep tier until a
+  heavier model is deployed in the Foundry portal. The `/openai/deployments` listing path is blocked
+  on this project endpoint, so use `backend/scripts/probe_deployments.py <names...>` (sends a real
+  1-token chat to each name and reports which return 200) to find what is live;
+  `backend/scripts/list_models.py` dumps the regional catalog (models the resource *could* host, not
+  what is deployed). Both scripts load `.env` themselves.
 - **LLM (`backend/llm/adk_agent.py`):** the single model path. `run_agent(prompt, deployment, ...)`
   returns text plus token usage and a USD cost from the price table in `config.py`. If Azure is not
   configured it returns the caller's `offline_response` (an explicit, labelled demo fallback, not a
