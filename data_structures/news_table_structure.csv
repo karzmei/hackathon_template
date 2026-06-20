@@ -1,0 +1,2 @@
+client_id,matched_on,date,source,url,manually_confirmed,impact_direction,news_id,news_categories,impact_categories
+12345,"beneficial_owner_name, sector",2026-06-15,South China Morning Post,"""https://example.com/article-scmp""",No,negative,1,"""regulatory"", ""geopolitical""","""geopolitical_regulatory"", ""reputational_risk"""

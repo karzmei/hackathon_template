@@ -1,0 +1,301 @@
+{
+  "client_id": "CL-2026-00417",
+  "entity_type": "corporate",
+  "record_version": 5,
+  "last_updated": "2026-06-20T07:00:00Z",
+
+  "internal": {
+    "identification": {
+      "legal_name": "NordPeak Exchange AG",
+      "trade_names": ["NordPeak"],
+      "registration_number": "CHE-114.332.910",
+      "legal_form": "AG",
+      "jurisdiction_of_incorporation": "CH",
+      "incorporation_date": "2019-03-12",
+      "industry_codes": [
+        {"scheme": "NACE", "code": "66.19", "description": "Other activities auxiliary to financial services", "primary": true}
+      ],
+      "sectors": ["crypto_exchange", "digital_asset_custody"],
+      "is_publicly_listed": true,
+      "listings": [
+        {"exchange": "SIX Swiss Exchange", "ticker": "NPK", "primary": true}
+      ]
+    },
+
+    "kyc_baseline": {
+      "expected_business_model": "Licensed digital-asset exchange serving institutional clients across CH/EU",
+      "business_activity_tags": ["digital_asset_exchange", "institutional_brokerage"],
+      "expected_countries_of_operation": ["CH", "DE", "FR"],
+      "expected_monthly_txn_volume_chf": 25000000,
+      "expected_monthly_txn_count": 1200,
+      "expected_avg_txn_size_chf": 20800,
+      "expected_counterparty_countries": ["CH", "DE", "FR", "SG"],
+      "source_of_funds": ["trading_revenue", "transaction_fees"],
+      "source_of_funds_other": null,
+      "source_of_wealth": ["founder_equity", "venture_funding"],
+      "source_of_wealth_other": null,
+      "customer_risk_rating": "medium",
+      "risk_rating_factors": ["licensed_exchange", "established_compliance_program", "crypto_sector_inherent_risk"],
+      "risk_rating_notes": "Medium tier reflects inherent crypto-sector risk despite a strong compliance program",
+      "onboarding_date": "2019-09-01",
+      "last_kyc_review_date": "2025-09-01",
+      "next_kyc_review_due": "2026-09-01"
+    },
+
+    "ownership": {
+      "beneficial_owners": [
+        {"name": "Daniel Ott", "ownership_pct": 40, "nationalities": ["CH"], "is_pep": false},
+        {"name": "Wai-Lam Cheng", "ownership_pct": 25, "nationalities": ["HK", "CA"], "is_pep": false}
+      ],
+      "shareholders_on_file": [
+        {"name": "Daniel Ott", "ownership_pct": 40},
+        {"name": "Wai-Lam Cheng", "ownership_pct": 25}
+      ],
+      "directors_officers": [
+        {"name": "Daniel Ott", "roles": ["CEO", "Director"]}
+      ],
+      "ownership_structure_complexity": "moderate"
+    },
+
+    "account_info": {
+      "account_type": "institutional trading account",
+      "account_open_date": "2019-09-05",
+      "products_held": ["digital_asset_custody", "FX_forward", "trading_account"],
+      "relationship_manager": "internal-only, redacted"
+    },
+
+    "aml_monitoring": {
+      "recent_monthly_txn_volume_chf": 41000000,
+      "recent_monthly_txn_count": 1310,
+      "cross_border_txn_ratio_pct": 58,
+      "top_counterparty_countries": ["HK", "SG", "CH"],
+      "txn_velocity_30d_vs_baseline_pct": 164,
+      "large_single_txn_count_30d": 9,
+      "structuring_pattern_flag": false,
+      "dormancy_status": "active",
+      "days_since_last_activity": 0,
+      "screening_status": {
+        "sanctions_match": false,
+        "pep_status": false,
+        "last_screened_date": "2026-06-19"
+      }
+    },
+
+    "compliance_status": {
+      "edd_required": false,
+      "edd_reasons": [],
+      "open_investigations": 0,
+      "sars_filed_count_lifetime": 0,
+      "account_restrictions": []
+    }
+  },
+
+  "external": {
+    "legal_registry": {
+      "current_legal_name": "NordPeak Exchange AG",
+      "current_legal_form": "AG",
+      "registered_address": "Bahnhofstrasse 45, 8001 Zürich, CH",
+      "registry_source": "Swiss Commercial Registry (Zefix)",
+      "last_registry_check": "2026-06-18",
+      "shareholders_on_record": ["Daniel Ott", "Wai-Lam Cheng"],
+      "filing_status": "active"
+    },
+
+    "news": [
+      {
+        "event_date": "2026-06-15",
+        "news_table_ids": [123, 234],
+        "sources": ["South China Morning Post", "Financial Times"],
+        "summary": "Article reports tightening HK regulatory stance on crypto exchanges with mainland-linked shareholders",
+        "impact": "negative",
+        "news_categories": ["regulatory", "geopolitical"],
+        "impact_categories": ["geopolitical_regulatory", "reputational_risk"],
+        "entity_match": {
+          "matched_on": ["beneficial_owner_name", "sector"],
+          "confirmed": true
+        },
+        "conclusion": {
+          "action": "escalate to compliance team",
+          "reason": "Requires review due to potential increased regulatory risk in HK jurisdiction, relevant to beneficial owner Wai-Lam Cheng and the crypto exchange sector. Escalated for Stage 2 LLM geopolitical reasoning."
+        }
+      }
+
+    ],
+
+    "web_presence": {
+      "current_domain": "nordpeak-exchange.ch",
+      "domain_registration_date": "2019-08-10",
+      "last_domain_change_date": null,
+      "website_content_hash": "a93f...",
+      "last_content_change_date": "2026-05-30",
+      "whois_registrant_org": "NordPeak Exchange AG",
+      "hosting_country": "CH"
+    },
+
+    "corporate_events": [
+      {
+        "event_type": "geographic_expansion",
+        "date": "2026-05-20",
+        "description": "Announced new institutional desk targeting Gulf-based clients",
+        "source": "company press release",
+        "amount_chf": null
+      }
+    ],
+
+    "linked_entities": [
+      {
+        "person": "Wai-Lam Cheng",
+        "roles": ["beneficial_owner", "director"],
+        "linked_entity_name": "Pacific Rim Strategic Holdings Ltd",
+        "linked_entity_country": "HK",
+        "sectors": ["defense_adjacent_logistics", "freight_logistics"],
+        "ownership_pct": 30,
+        "flag_reason": "Beneficial owner holds a stake in a defense-adjacent logistics company, not previously on file",
+        "source": "HK Companies Registry cross-reference",
+        "discovered_date": "2026-06-10"
+      }
+    ],
+
+    "geopolitical_signals": [
+      {
+        "date": "2026-06-12",
+        "topic": "Regulatory stance toward crypto-sector entities with mainland exposure",
+        "jurisdictions": ["HK", "CN"],
+        "description": "Tightening posture reported; relevant given client's HK-based beneficial owner and counterparties",
+        "impact": "negative",
+        "source": "South China Morning Post"
+      }
+    ],
+
+    "sanctions_adverse_media_screening": {
+      "ofac_match": false,
+      "eu_sanctions_match": false,
+      "un_sanctions_match": false,
+      "adverse_media_hits_30d": 1,
+      "last_screened": "2026-06-19"
+    },
+
+    "market_signals": {
+      "employee_count_estimate": 85,
+      "employee_count_trend_90d_pct": 12,
+      "social_media_activity_level": "moderate",
+      "linkedin_url": "linkedin.com/company/nordpeak-exchange",
+      "headquarters_location_reported": "Zürich, CH"
+    }
+  },
+
+  "derived": {
+    "digest_facts": [
+      {
+        "fact_id": "f-2026-06-20-001",
+        "fact": "Beneficial owner Wai-Lam Cheng holds a 30% stake in a defense-adjacent logistics company in Hong Kong, not previously on file",
+        "impact": "negative",
+        "severity": "critical",
+        "policy_violation": true,
+        "categories": ["policy_exclusion", "ownership_red_flag"],
+        "source": "HK Companies Registry cross-reference",
+        "url": null,
+        "first_observed_date": "2026-06-10",
+        "relevant_to": ["RM", "compliance"],
+        "trigger": {
+          "method": "policy_exclusion_match",
+          "rule_or_model": "board_exclusion_screening",
+          "policy_refs": [
+            {
+              "exclusion_id": "EXC-001",
+              "label": "Defense & arms manufacturing",
+              "severity": "prohibited",
+              "board_reference": "Risk Appetite Statement v4, section 3.2"
+            }
+          ],
+          "matched_values": ["defense_adjacent_logistics"],
+          "score": null,
+          "threshold": null,
+          "reasoning": "Linked entity 'Pacific Rim Strategic Holdings Ltd' (sectors: defense_adjacent_logistics, freight_logistics) matches board exclusion EXC-001 (prohibited). Link to client established via entity_resolution_name_match.",
+          "supporting_trigger": {
+            "method": "ml_score",
+            "rule_or_model": "entity_resolution_name_match",
+            "score": 0.81,
+            "threshold": 0.65,
+            "reasoning": "Cross-registry name match between beneficial owner 'Wai-Lam Cheng' and a shareholder record at the linked entity, resolved despite differing name romanization"
+          }
+        }
+      },
+      {
+        "fact_id": "f-2026-06-20-002",
+        "fact": "HK regulators reported tightening stance on crypto-sector entities with mainland exposure",
+        "impact": "negative",
+        "severity": "high",
+        "policy_violation": false,
+        "categories": ["geopolitical_regulatory", "reputational_risk"],
+        "source": "South China Morning Post",
+        "url": "https://example.com/article-scmp",
+        "first_observed_date": "2026-06-15",
+        "relevant_to": ["RM", "compliance"],
+        "trigger": {
+          "method": "llm_reasoning",
+          "rule_or_model": "stage2_geopolitical_reasoning (Azure OpenAI, Switzerland North)",
+          "score": null,
+          "threshold": null,
+          "reasoning": "Article explicitly ties HK regulatory tightening to crypto entities with mainland shareholder exposure; client matches both criteria via beneficial owner nationality and sector. Escalated from Stage 1 zero-shot classifier (category confidence 0.74, above 0.65 routing threshold) to Stage 2 for this reasoning."
+        }
+      },
+      {
+        "fact_id": "f-2026-06-20-003",
+        "fact": "Transaction volume is 164% of the expected baseline this month, driven by new HK/SG counterparties",
+        "impact": "negative",
+        "severity": "medium",
+        "policy_violation": false,
+        "categories": ["transaction_anomaly"],
+        "source": "internal AML monitoring",
+        "url": null,
+        "first_observed_date": "2026-06-20",
+        "relevant_to": ["compliance"],
+        "trigger": {
+          "method": "rule",
+          "rule_or_model": "txn_volume_threshold_rule",
+          "score": 1.64,
+          "threshold": 1.5,
+          "reasoning": "Monthly transaction volume ratio (actual / expected) = 1.64, exceeds the 1.5x review threshold"
+        }
+      }
+    ],
+
+    "suggested_actions": [
+      {
+        "action_type": "escalate_policy_violation",
+        "description": "Linked entity sector matches board exclusion EXC-001 (defense & arms manufacturing) — requires senior compliance review per Risk Appetite Statement v4",
+        "based_on_facts": ["f-2026-06-20-001"],
+        "status": "pending_review"
+      },
+      {
+        "action_type": "kyc_refresh",
+        "description": "Bring forward next KYC review given HK regulatory shift and volume increase",
+        "based_on_facts": ["f-2026-06-20-002", "f-2026-06-20-003"],
+        "status": "pending_review"
+      }
+    ],
+
+    "watchlist_status": "not_listed",
+    "digest_batch_id": "morning-batch-2026-06-20-0700",
+    "digest_date": "2026-06-20",
+
+    "pipeline_run": {
+      "stage_reached": 2,
+      "tokens_input": 3120,
+      "tokens_output": 540,
+      "model_calls": 2,
+      "processed_in_region": "Switzerland North (Azure)",
+      "processing_time_ms": 6100,
+      "evaluated_no_alert": [
+        {
+          "signal": "business_model_drift",
+          "rule_or_model": "kyc_baseline_embedding_similarity",
+          "score": 0.18,
+          "threshold": 0.5,
+          "result": "below_threshold, no alert raised"
+        }
+      ]
+    }
+  }
+}
