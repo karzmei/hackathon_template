@@ -1,10 +1,8 @@
-import { CaseDetail } from "driftwatch-frontend";
-import { buildView, type CockpitView } from "@/lib/cockpit-view";
-import { seedCases } from "@/lib/cockpit-seed";
+import { CaseDetail, buildView, seedCases } from "driftwatch-frontend";
 
 const noop = () => {};
 
-function render(view: CockpitView) {
+function render(view: ReturnType<typeof buildView>) {
   const d = view.detail!;
   return (
     <div style={{ width: 800, maxWidth: "100%", background: "#fff" }}>

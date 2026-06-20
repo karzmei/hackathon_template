@@ -85,6 +85,32 @@ test("@smoke the Re-KYC instruction returns to the RM and is confirmed", async (
   await expect(page.getByText(/Confirmed Re-KYC initiated/)).toBeVisible();
 });
 
+// FJ6 in docs/USER_JOURNEYS.md: the live two-window handoff. Two pages in one browser
+// context share localStorage; an RM escalation in window A propagates to the Compliance
+// window B via the storage event + poll, with no reload.
+test("@smoke cross-window: an RM escalation reaches the Compliance window live", async ({ browser }) => {
+  const context = await browser.newContext();
+  const rm = await context.newPage();
+  await rm.goto("/");
+  await rm.getByRole("button", { name: /Lena Brunner/ }).click();
+  await expect(rm.getByText("Your book")).toBeVisible();
+
+  const compliance = await context.newPage();
+  await compliance.goto("/");
+  await compliance.getByRole("button", { name: /Sofia Keller/ }).click();
+  await expect(compliance.getByText("Escalations · ranked")).toBeVisible();
+
+  // Window A: the RM escalates Castor.
+  await rm.getByRole("button", { name: /Castor Mining Ltd/ }).click();
+  await rm.getByRole("button", { name: /Escalate to Compliance/ }).click();
+  await expect(rm.getByText("Flagged · awaiting Compliance").first()).toBeVisible();
+
+  // Window B never escalated; the flagged status can only arrive via cross-window sync.
+  await expect(compliance.getByText("Flagged · awaiting Compliance").first()).toBeVisible();
+
+  await context.close();
+});
+
 // FJ7 in docs/USER_JOURNEYS.md: a quiet client is reviewed with no change.
 test("@smoke RM reviews a quiet client with no change", async ({ page }) => {
   await page.goto("/");

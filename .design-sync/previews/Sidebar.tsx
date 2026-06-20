@@ -1,6 +1,4 @@
-import { Sidebar } from "driftwatch-frontend";
-import { buildView } from "@/lib/cockpit-view";
-import { seedCases } from "@/lib/cockpit-seed";
+import { Sidebar, buildView, seedCases } from "driftwatch-frontend";
 
 const cases = seedCases();
 
