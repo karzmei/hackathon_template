@@ -55,7 +55,9 @@ Cost criteria; own the pitch and the compliance story.
   the three decision actions with status pill and audit trail. Stub components already exist:
   `BaselineVsCurrent`, `SignalTimeline`, `RiskBand`, `ActionBar`, `StatusPill`, `CostMeter`.
 - Per-alert and per-day cost meter (a disproportionate point-winner); read `GET /api/cost/today`.
+  Covered by the shared cost and efficiency dashboard (#33); cockpit issue #34 closed as superseded.
 - Baseline-vs-current panel showing each dimension as `baseline -> current`, with citations and confidence.
+  Issue #35 closed as descoped, superseded by #33.
 - Human-in-the-loop action bar: Approve Re-KYC, Escalate to MLRO, Dismiss as false positive; show the
   audit line after a decision.
 - AMINA visual polish (navy, gold, cream; serif headers, sans body).
