@@ -21,6 +21,11 @@ describe("LoginScreen", () => {
     expect(screen.getByText(/Escalations from the first line/)).toBeInTheDocument();
   });
 
+  it("shows the MLRO as the third line of defence in the escalation flow", () => {
+    render(<LoginScreen onPick={() => {}} />);
+    expect(screen.getByText("3RD LINE · MLRO")).toBeInTheDocument();
+  });
+
   it("links to the shared cost dashboard", () => {
     render(<LoginScreen onPick={() => {}} />);
     const link = screen.getByRole("link", { name: /COST & EFFICIENCY DASHBOARD/ });

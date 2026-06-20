@@ -45,7 +45,9 @@ export function LoginScreen({ onPick }: { onPick: (role: Role) => void }) {
       <p className="mb-3 mt-0 max-w-[520px] text-sm leading-relaxed" style={{ color: "oklch(0.556 0 0)" }}>
         Choose your seat to open your queue. Relationship Manager and Account Manager are the{" "}
         <b style={{ color: "oklch(0.35 0 0)" }}>first line</b> who own the client; Compliance is the{" "}
-        <b style={{ color: "oklch(0.35 0 0)" }}>second line</b> control. Flags go up; instructions come back down.
+        <b style={{ color: "oklch(0.35 0 0)" }}>second line</b> control; the{" "}
+        <b style={{ color: "oklch(0.35 0 0)" }}>MLRO</b> is the third line that owns the regulatory
+        reporting decision. Flags go up; instructions come back down.
       </p>
       <div
         className="my-[14px] flex flex-wrap items-center justify-center gap-[18px] font-mono text-[10px]"
@@ -59,6 +61,12 @@ export function LoginScreen({ onPick }: { onPick: (role: Role) => void }) {
         </span>
         <span className="rounded-full px-[11px] py-1" style={{ background: "#fcebeb", color: "#501313" }}>
           2ND LINE · CONTROL
+        </span>
+        <span className="self-center" style={{ color: "oklch(0.7 0 0)" }}>
+          &rarr; escalate &rarr;
+        </span>
+        <span className="rounded-full px-[11px] py-1" style={{ background: "#ece9fb", color: "#312461" }}>
+          3RD LINE · MLRO
         </span>
       </div>
       <div className="flex max-w-[1000px] flex-wrap justify-center gap-5">
