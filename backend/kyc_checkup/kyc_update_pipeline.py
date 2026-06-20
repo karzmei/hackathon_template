@@ -9,6 +9,7 @@ from kyc_checkup.kyc_schemas import (
     KycBaselineProfile,
     TriggerAlert,
     TriggerRequest,
+    WebsiteChangeRequest,
 )
 from kyc_checkup.legal_checks import (
     has_jurisdiction_changed,
@@ -27,6 +28,7 @@ from kyc_checkup.sanctions_watchlist_checks import (
     has_sanctioned_owner,
     is_company_sanctioned,
 )
+from kyc_checkup.website_domain_checks import analyze_website_change
 
 
 def process_trigger(
@@ -36,6 +38,15 @@ def process_trigger(
     current: KycBaselineProfile,
     sanctioned_names: Collection[str] = (),
 ) -> list[TriggerAlert]:
+    website_result = None
+    if CheckType.WEBSITE_DOMAIN in check_groups:
+        website_request = WebsiteChangeRequest.model_validate({
+            **trigger.payload,
+            "client_id": trigger.client_id,
+            "trigger_type": trigger.trigger_type,
+        })
+        website_result = analyze_website_change(website_request)
+
     checks = {
         CheckType.LEGAL_ENTITY: [
             ("legal_name_changed", has_legal_name_changed(
@@ -103,5 +114,31 @@ def process_trigger(
                     created_at=datetime.utcnow().isoformat() + "Z",
                 )
             )
+
+    if website_result and website_result.alert_level != "none":
+        is_high = website_result.alert_level == "high"
+        alerts.append(
+            TriggerAlert(
+                alert_id=f"alert-{trigger.trigger_id}-website_change",
+                trigger_id=trigger.trigger_id,
+                client_id=trigger.client_id,
+                type=CheckType.WEBSITE_DOMAIN,
+                risk_level=RiskBand(website_result.alert_level),
+                recommended_action=(
+                    RecommendedAction.escalate
+                    if is_high
+                    else RecommendedAction.re_kyc
+                ),
+                summary=(
+                    "Prohibited website activity detected"
+                    if is_high
+                    else "Possible business drift detected"
+                ),
+                details=website_result.explanation,
+                status=AlertStatus.new,
+                check_groups=[CheckType.WEBSITE_DOMAIN],
+                created_at=datetime.utcnow().isoformat() + "Z",
+            )
+        )
 
     return alerts

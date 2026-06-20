@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -66,6 +66,46 @@ class KycBaselineProfile(BaselineProfile):
     registered_address: str | None = None
     registry_status: str | None = None
     legal_identifier: str | None = None
+
+
+class WebsiteChangeRequest(BaseModel):
+    client_id: str
+    trigger_type: str = "website_changed"
+    approved_business_description: str
+    approved_sectors: list[str] = Field(default_factory=list)
+    approved_products_services: list[str] = Field(default_factory=list)
+    approved_customer_types: list[str] = Field(default_factory=list)
+    approved_geographies: list[str] = Field(default_factory=list)
+    website_text: str
+
+
+class NoGoHit(BaseModel):
+    category: str
+    term: str
+    evidence: str | None = None
+
+
+class AnchorMatch(BaseModel):
+    anchor: str
+    best_matching_snippet: str
+    score: float
+
+
+class WebsiteChangeResult(BaseModel):
+    client_id: str
+    trigger_type: str = "website_changed"
+    website_text_hash: str
+    embedding_model: str
+    profile_match_score: float
+    drift_score: float
+    alert_level: Literal["none", "low", "medium", "high"]
+    no_go_hits: list[NoGoHit] = Field(default_factory=list)
+    matched_no_go_categories: list[str] = Field(default_factory=list)
+    matched_no_go_terms: list[str] = Field(default_factory=list)
+    anchor_matches: list[AnchorMatch] = Field(default_factory=list)
+    explanation: str
+    recommended_action: str
+    evidence: list[str] = Field(default_factory=list)
 
 
 # ---------- Request / Response models ----------

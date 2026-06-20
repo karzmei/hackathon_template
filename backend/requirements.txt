@@ -1,6 +1,7 @@
 fastapi
 uvicorn[standard]
 pydantic>=2
+sentence-transformers
 python-dotenv
 google-adk
 litellm
