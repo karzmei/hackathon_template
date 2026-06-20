@@ -1,13 +1,16 @@
 import { describe, it, expect } from "vitest";
 import { seedCases } from "@/lib/cockpit-seed";
-import { buildView, statusPill, recVM, rowVM } from "@/lib/cockpit-view";
-import type { Case } from "@/lib/cockpit-types";
+import { bandToneName, buildView, navItem, statusPill, recVM, rowVM } from "@/lib/cockpit-view";
+import { TONES } from "@/lib/cockpit-types";
+import { find, decided, flagged } from "@/test/cockpit-helpers";
 
-function find(id: string): Case {
-  const c = seedCases().find((x) => x.id === id);
-  if (!c) throw new Error(`no seed case ${id}`);
-  return c;
-}
+describe("bandToneName", () => {
+  it("maps each risk band to its semantic tone", () => {
+    expect(bandToneName("LOW")).toBe("success");
+    expect(bandToneName("MEDIUM")).toBe("warning");
+    expect(bandToneName("HIGH")).toBe("danger");
+  });
+});
 
 describe("statusPill", () => {
   it("labels a flagged case as awaiting Compliance", () => {
@@ -18,17 +21,44 @@ describe("statusPill", () => {
     expect(statusPill(find("alpenrose")).text).toBe("No change overnight");
   });
 
+  it("labels a plain open non-quiet case as needs review", () => {
+    expect(statusPill(find("castor")).text).toBe("Needs review");
+  });
+
+  it("labels each non-decided lifecycle status", () => {
+    expect(statusPill({ ...find("helvetia"), status: "in_compliance_review" }).text).toBe("In Compliance review");
+    expect(statusPill({ ...find("nordwind"), status: "escalated_by_am" }).text).toBe(
+      "Escalated by AM · awaiting Compliance",
+    );
+    expect(statusPill({ ...find("bernina"), status: "handed_to_am" }).text).toBe("Reassigned to Account Manager");
+    expect(statusPill({ ...find("alpenrose"), status: "reviewed" }).text).toBe("Reviewed · no change");
+  });
+
   it("reflects a Re-KYC decision and whether the instruction is done", () => {
     const c = { ...find("helvetia"), status: "decided" as const, decision: "re_kyc" as const };
     expect(statusPill({ ...c, instructionDone: false }).text).toBe("Compliance: Re-KYC required");
     expect(statusPill({ ...c, instructionDone: true }).text).toBe("Re-KYC initiated");
   });
 
-  it("labels a watchlist decision with the danger tone colour", () => {
-    const c = { ...find("castor"), status: "decided" as const, decision: "watchlist" as const };
-    const pill = statusPill(c);
-    expect(pill.text).toBe("Compliance: Watchlisted");
-    expect(pill.border).toBe("#e24b4a");
+  it("reflects a document-request decision and its done state", () => {
+    const c = { ...find("nordwind"), status: "decided" as const, decision: "doc_request" as const };
+    expect(statusPill({ ...c, instructionDone: false }).text).toBe("Compliance: document requested");
+    expect(statusPill({ ...c, instructionDone: true }).text).toBe("Document provided");
+  });
+
+  it("labels the remaining Compliance decisions with their tones", () => {
+    const base = { ...find("castor"), status: "decided" as const };
+    const watch = statusPill({ ...base, decision: "watchlist" });
+    expect(watch.text).toBe("Compliance: Watchlisted");
+    expect(watch.border).toBe(TONES.danger.border);
+
+    const mlro = statusPill({ ...base, decision: "mlro" });
+    expect(mlro.text).toBe("Compliance: Escalated to MLRO");
+    expect(mlro.border).toBe(TONES.info.border);
+
+    const dismiss = statusPill({ ...base, decision: "dismiss" });
+    expect(dismiss.text).toBe("Compliance: cleared, no action");
+    expect(dismiss.border).toBe(TONES.success.border);
   });
 });
 
@@ -44,6 +74,10 @@ describe("recVM", () => {
   it("monitor recommendation is no action", () => {
     expect(recVM(find("alpenrose")).direction).toBe("NO ACTION");
   });
+
+  it("has no card when there is no recommended action", () => {
+    expect(recVM({ ...find("helvetia"), recAction: null as never }).has).toBe(false);
+  });
 });
 
 describe("rowVM", () => {
@@ -58,9 +92,41 @@ describe("rowVM", () => {
     expect(rowVM({ ...c, amUnread: true }, null, "am").unread).toBe(true);
   });
 
+  it("never marks an RM row unread", () => {
+    expect(rowVM({ ...find("helvetia"), unread: true }, null, "rm").unread).toBe(false);
+  });
+
   it("flags the selected row", () => {
     expect(rowVM(find("helvetia"), "helvetia", "rm").selected).toBe(true);
     expect(rowVM(find("helvetia"), "bernina", "rm").selected).toBe(false);
+  });
+
+  it("carries the band label and accent for the row", () => {
+    const row = rowVM(find("helvetia"), null, "rm");
+    expect(row.bandLabel).toBe("HIGH");
+    expect(row.accent).toBe(TONES.danger.border);
+  });
+});
+
+describe("navItem", () => {
+  it("uses an active style and no count when inactive count is hidden", () => {
+    const item = navItem("Morning digest", 0, true, false);
+    expect(item.active).toBe(true);
+    expect(item.hasCount).toBe(false);
+    expect(item.bg).toBe("#fff");
+  });
+
+  it("applies the count tone colours when given", () => {
+    const item = navItem("Inbox", 3, true, true, "danger");
+    expect(item.hasCount).toBe(true);
+    expect(item.countBg).toBe(TONES.danger.bg);
+    expect(item.countColor).toBe(TONES.danger.text);
+  });
+
+  it("falls back to the dark count chip without a tone", () => {
+    const item = navItem("My clients", 5, false, true);
+    expect(item.countBg).toBe("oklch(0.205 0 0)");
+    expect(item.countColor).toBe("#fff");
   });
 });
 
@@ -74,16 +140,40 @@ describe("buildView lists and nav", () => {
     expect(ids).toEqual(["helvetia", "castor", "bernina", "alpenrose", "meridian"]);
   });
 
-  it("AM list shows only AM-owned accounts", () => {
+  it("RM header and empty text describe the morning digest", () => {
+    const view = buildView({ role: "rm", cases, selectedId: null, msgTo: "am" });
+    expect(view.listTitle).toBe("Your book");
+    expect(buildView({ role: "rm", cases: [], selectedId: null, msgTo: "am" }).listEmptyText).toBe(
+      "No clients in your book.",
+    );
+  });
+
+  it("AM list shows only AM-owned accounts, ranked by materiality", () => {
     const view = buildView({ role: "am", cases, selectedId: null, msgTo: "rm" });
-    expect(view.list.map((r) => r.id).sort()).toEqual(["lago", "nordwind"]);
+    expect(view.list.map((r) => r.id)).toEqual(["nordwind", "lago"]);
+  });
+
+  it("AM nav counts handed-to-me and escalated-by-me", () => {
+    const book = [
+      ...seedCases().map((c) => (c.id === "nordwind" ? { ...c, status: "handed_to_am" as const } : c)),
+    ].map((c) => (c.id === "lago" ? { ...c, status: "escalated_by_am" as const } : c));
+    const view = buildView({ role: "am", cases: book, selectedId: null, msgTo: "rm" });
+    expect(view.nav.find((n) => n.label === "Handed to me")?.count).toBe(1);
+    expect(view.nav.find((n) => n.label === "Escalated by me")?.count).toBe(1);
+  });
+
+  it("RM nav counts escalations and outstanding Compliance instructions", () => {
+    const book = decided("helvetia", "re_kyc").map((c) =>
+      c.id === "castor" ? { ...c, status: "flagged_by_rm" as const } : c,
+    );
+    const view = buildView({ role: "rm", cases: book, selectedId: null, msgTo: "am" });
+    expect(view.nav.find((n) => n.label === "Escalated by me")?.count).toBe(1); // castor flagged
+    expect(view.nav.find((n) => n.label === "Compliance requests")?.count).toBe(1); // helvetia re_kyc undone
   });
 
   it("Compliance inbox excludes low-materiality open cases and orders decided last", () => {
-    const decided = cases.map((c) =>
-      c.id === "lago" ? { ...c, status: "decided" as const, decision: "dismiss" as const } : c,
-    );
-    const view = buildView({ role: "compliance", cases: decided, selectedId: null, msgTo: "rm" });
+    const book = decided("lago", "dismiss");
+    const view = buildView({ role: "compliance", cases: book, selectedId: null, msgTo: "rm" });
     const ids = view.list.map((r) => r.id);
     expect(ids).toContain("helvetia"); // flagged
     expect(ids).not.toContain("alpenrose"); // open + materiality 8 < 40
@@ -97,6 +187,7 @@ describe("buildView lists and nav", () => {
       (c) =>
         c.status === "flagged_by_rm" ||
         c.status === "escalated_by_am" ||
+        c.status === "in_compliance_review" ||
         (c.status === "open" && c.materiality >= 40),
     ).length;
     expect(inbox?.count).toBe(need);
@@ -124,42 +215,79 @@ describe("buildView detail assembly", () => {
     expect(view.detail?.signals[0].pct).toBe("100%"); // 34 is the max
   });
 
+  it("colours change dots by direction", () => {
+    const view = buildView({ role: "rm", cases, selectedId: "helvetia", msgTo: "am" });
+    const dots = view.detail?.changes.map((ch) => ch.dot) ?? [];
+    expect(dots).toContain("#e24b4a"); // negative
+    expect(dots).toContain("oklch(0.7 0 0)"); // neutral
+  });
+
+  it("aligns my own thread messages to the right and peers to the left", () => {
+    const view = buildView({ role: "compliance", cases, selectedId: "helvetia", msgTo: "rm" });
+    // Helvetia's seeded message is from rm to compliance; for compliance it is a peer.
+    expect(view.detail?.thread[0].align).toBe("flex-start");
+    const rmView = buildView({ role: "rm", cases, selectedId: "helvetia", msgTo: "am" });
+    expect(rmView.detail?.thread[0].align).toBe("flex-end");
+  });
+
   it("offers RM first-line actions on an open owned case", () => {
     const view = buildView({ role: "rm", cases, selectedId: "castor", msgTo: "am" });
     const keys = view.detail?.actorButtons.map((b) => b.key);
     expect(keys).toEqual(["escalate", "handover", "reviewed"]);
   });
 
+  it("offers AM first-line actions with a hand-back on an owned case", () => {
+    const view = buildView({ role: "am", cases, selectedId: "nordwind", msgTo: "rm" });
+    const keys = view.detail?.actorButtons.map((b) => b.key);
+    expect(keys).toEqual(["escalate", "handback", "reviewed"]);
+  });
+
   it("offers the five Compliance decisions on an undecided case", () => {
-    const flagged = cases.map((c) => (c.id === "helvetia" ? { ...c, status: "flagged_by_rm" as const } : c));
-    const view = buildView({ role: "compliance", cases: flagged, selectedId: "helvetia", msgTo: "rm" });
+    const view = buildView({ role: "compliance", cases: flagged("helvetia"), selectedId: "helvetia", msgTo: "rm" });
     const keys = view.detail?.actorButtons.map((b) => b.key);
     expect(keys).toEqual(["re_kyc", "doc_request", "watchlist", "mlro", "dismiss"]);
   });
 
+  it("offers no actor buttons on a decided case", () => {
+    const view = buildView({
+      role: "compliance",
+      cases: decided("helvetia", "watchlist"),
+      selectedId: "helvetia",
+      msgTo: "rm",
+    });
+    expect(view.detail?.hasActorButtons).toBe(false);
+  });
+
   it("shows the instruction banner to the owner after a Re-KYC decision, then the done state", () => {
-    const decided = cases.map((c) =>
-      c.id === "helvetia"
-        ? { ...c, status: "decided" as const, decision: "re_kyc" as const, instructionDone: false }
-        : c,
-    );
-    const pending = buildView({ role: "rm", cases: decided, selectedId: "helvetia", msgTo: "am" });
+    const pending = buildView({
+      role: "rm",
+      cases: decided("helvetia", "re_kyc", false),
+      selectedId: "helvetia",
+      msgTo: "am",
+    });
     expect(pending.detail?.instructionPending).toBe(true);
     expect(pending.detail?.decidedBanner).toBe(false);
 
-    const done = decided.map((c) => (c.id === "helvetia" ? { ...c, instructionDone: true } : c));
-    const doneView = buildView({ role: "rm", cases: done, selectedId: "helvetia", msgTo: "am" });
+    const doneView = buildView({
+      role: "rm",
+      cases: decided("helvetia", "re_kyc", true),
+      selectedId: "helvetia",
+      msgTo: "am",
+    });
     expect(doneView.detail?.instructionDone).toBe(true);
     expect(doneView.detail?.instructionPending).toBe(false);
   });
 
-  it("shows a decided banner to the non-owner Compliance view", () => {
-    const decided = cases.map((c) =>
-      c.id === "helvetia" ? { ...c, status: "decided" as const, decision: "re_kyc" as const } : c,
-    );
-    const view = buildView({ role: "compliance", cases: decided, selectedId: "helvetia", msgTo: "rm" });
+  it("shows a decided banner with the outcome to the non-owner Compliance view", () => {
+    const view = buildView({
+      role: "compliance",
+      cases: decided("helvetia", "re_kyc"),
+      selectedId: "helvetia",
+      msgTo: "rm",
+    });
     expect(view.detail?.decidedBanner).toBe(true);
     expect(view.detail?.instructionPending).toBe(false);
+    expect(view.detail?.outcomeLabel).toBe("Re-KYC required");
   });
 });
 
@@ -175,5 +303,18 @@ describe("buildView role gating and recipients", () => {
     const view = buildView({ role: "rm", cases: seedCases(), selectedId: "helvetia", msgTo: "am" });
     expect(view.msgRecipients.map((r) => r.key)).toEqual(["am", "compliance"]);
     expect(view.msgRecipients.find((r) => r.key === "am")?.active).toBe(true);
+  });
+
+  it("offers an AM the RM and Compliance, and Compliance the two first-line peers", () => {
+    const am = buildView({ role: "am", cases: seedCases(), selectedId: "nordwind", msgTo: "rm" });
+    expect(am.msgRecipients.map((r) => r.key)).toEqual(["rm", "compliance"]);
+    const comp = buildView({ role: "compliance", cases: seedCases(), selectedId: "helvetia", msgTo: "rm" });
+    expect(comp.msgRecipients.map((r) => r.key)).toEqual(["rm", "am"]);
+  });
+
+  it("counts the unread inbox across the book", () => {
+    const view = buildView({ role: "compliance", cases: seedCases(), selectedId: null, msgTo: "rm" });
+    expect(view.inboxCount).toBe(1); // only Helvetia is seeded unread
+    expect(view.hasInboxUnread).toBe(true);
   });
 });
