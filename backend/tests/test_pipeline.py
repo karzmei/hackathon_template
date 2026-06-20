@@ -5,18 +5,15 @@ offline stub so the chain is exercised end to end.
 """
 
 import asyncio
-import os
 import unittest
+from unittest.mock import patch
 
 import store
-
-# Force offline mode so smoke tests never hit a real LLM endpoint.
-os.environ.pop("GOOGLE_API_KEY", None)
-os.environ.pop("GEMINI_API_KEY", None)
-os.environ.pop("AZURE_API_KEY", None)
 from data.seed import all_clients, baseline_for
 from pipeline.orchestrator import run_pipeline
 from schemas import RecommendedAction, RiskBand, RiskRating
+
+_NO_KEYS = {"GOOGLE_API_KEY": "", "GEMINI_API_KEY": "", "AZURE_API_KEY": "", "PUBLICAI_API_KEY": ""}
 
 HELVETIA = next(c for c in all_clients() if c.id == "helvetia")
 LAKESIDE = next(c for c in all_clients() if c.id == "lakeside")
@@ -25,7 +22,8 @@ LAKESIDE = next(c for c in all_clients() if c.id == "lakeside")
 class HelvetiaDriftTest(unittest.TestCase):
     def setUp(self):
         store.reset()
-        self.alert = asyncio.run(run_pipeline(HELVETIA))
+        with patch.dict("os.environ", _NO_KEYS):
+            self.alert = asyncio.run(run_pipeline(HELVETIA))
 
     def test_reaches_deep_analysis(self):
         self.assertEqual(self.alert.analysis_depth, 3)
@@ -51,7 +49,8 @@ class HelvetiaDriftTest(unittest.TestCase):
 class LakesideNoChangeTest(unittest.TestCase):
     def setUp(self):
         store.reset()
-        self.alert = asyncio.run(run_pipeline(LAKESIDE))
+        with patch.dict("os.environ", _NO_KEYS):
+            self.alert = asyncio.run(run_pipeline(LAKESIDE))
 
     def test_dies_at_step_one_with_zero_cost(self):
         self.assertEqual(self.alert.analysis_depth, 1)
