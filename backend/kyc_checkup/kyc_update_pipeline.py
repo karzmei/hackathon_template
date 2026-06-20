@@ -132,7 +132,11 @@ def process_trigger(
                 summary=(
                     "Prohibited website activity detected"
                     if is_high
-                    else "Possible business drift detected"
+                    else (
+                        "Ambiguous no-go website terms detected"
+                        if website_result.no_go_hits
+                        else "Possible business drift detected"
+                    )
                 ),
                 details=website_result.explanation,
                 status=AlertStatus.new,

@@ -19,11 +19,11 @@ MEDIUM_DRIFT_THRESHOLD = 0.40
 NO_GO_TERMS = {
     "gambling": [
         "casino", "betting", "sportsbook", "poker", "slots",
-        "wagering", "lottery", "odds",
+        "wagering", "lottery"
     ],
     "weapons": [
         "firearms", "ammunition", "missiles", "arms trading",
-        "military weapons", "explosives",
+        "military weapons", "explosives", "defence"
     ],
     "adult": ["adult entertainment", "pornography", "escort services"],
     "sanctions_risk": [
@@ -31,6 +31,15 @@ NO_GO_TERMS = {
         "Russia military",
     ],
 }
+
+NEGATIVE_CONTEXT_TERMS = [
+    "we do not", "prohibited", "against", "prevent", "detect",
+    "compliance", "risk monitoring",
+]
+ACTIVITY_CONTEXT_TERMS = [
+    "we offer", "our services", "play now", "bet now", "place a bet",
+    "buy ammunition",
+]
 
 _embedding_model: Any = None
 
@@ -142,20 +151,36 @@ def detect_no_go_terms(text: str) -> list[NoGoHit]:
                 continue
             start = max(0, index - 60)
             end = min(len(text), index + len(term) + 60)
+            context = text[start:end].strip()
+            lowered_context = context.casefold()
+            has_negative_context = any(
+                marker in lowered_context for marker in NEGATIVE_CONTEXT_TERMS
+            )
+            if has_negative_context:
+                continue
             hits.append(NoGoHit(
                 category=category,
                 term=term,
-                evidence=text[start:end].strip(),
+                evidence=context,
             ))
     return hits
 
 
 def decide_alert_level(drift_score: float, no_go_hits: list[NoGoHit]) -> str:
-    if no_go_hits:
+    category_counts = {
+        hit.category: sum(other.category == hit.category for other in no_go_hits)
+        for hit in no_go_hits
+    }
+    has_activity_context = any(
+        marker in (hit.evidence or "").casefold()
+        for hit in no_go_hits
+        for marker in ACTIVITY_CONTEXT_TERMS
+    )
+    if has_activity_context or any(count >= 2 for count in category_counts.values()):
         return "high"
     if drift_score >= MEDIUM_DRIFT_THRESHOLD:
         return "medium"
-    if drift_score >= LOW_DRIFT_THRESHOLD:
+    if no_go_hits or drift_score >= LOW_DRIFT_THRESHOLD:
         return "low"
     return "none"
 
@@ -170,9 +195,12 @@ def analyze_website_change(request: WebsiteChangeRequest) -> WebsiteChangeResult
     drift_score = round(1 - profile_match_score, 4)
     alert_level = decide_alert_level(drift_score, no_go_hits)
 
-    if no_go_hits:
-        explanation = "The website contains terms linked to a prohibited activity."
+    if no_go_hits and alert_level == "high":
+        explanation = "The website context indicates possible prohibited activity."
         recommended_action = "Escalate for compliance review."
+    elif no_go_hits:
+        explanation = "The website contains ambiguous terms linked to a prohibited activity."
+        recommended_action = "Review the website context before drawing a conclusion."
     elif alert_level != "none":
         explanation = "The website shows possible business drift from the approved profile."
         recommended_action = "Review the website evidence and confirm the business activity."
