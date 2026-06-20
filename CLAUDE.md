@@ -23,6 +23,11 @@ semicolons, commas, or shorter sentences.
 Note: the original pitch brief specced a TypeScript/Hono/Azure stack; the chosen stack here is
 Next.js + Python + Google ADK. Treat the brief as domain context, not the tech stack.
 
+## Subdirectory guides
+
+- `frontend/CLAUDE.md`: Next.js cockpit UI; layout, commands, the mock-first data layer, the
+  `api.ts` <-> `schemas.py` contract, styling, and test conventions. Read it before frontend work.
+
 ## Commands (Windows / PowerShell)
 
 ```powershell
@@ -33,14 +38,9 @@ pip install -r requirements.txt
 uvicorn main:app --reload --port 8000          # http://localhost:8000/docs
 python -m unittest discover -s tests           # all @smoke tests, run offline
 python -m unittest tests.test_pipeline.HelvetiaDriftTest   # single test class
-
-# Frontend
-cd frontend
-npm install
-npm run dev        # http://localhost:3000
-npm run build      # production build / full typecheck
-npx tsc --noEmit   # typecheck only
 ```
+
+Frontend commands and workflow live in `frontend/CLAUDE.md`.
 
 Run the backend from inside `backend/` so module imports resolve (the app uses flat imports like
 `from schemas import ...`, `from pipeline.orchestrator import ...`).
