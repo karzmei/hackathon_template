@@ -14,6 +14,7 @@ import {
   type Tone,
   type ToneName,
 } from "@/lib/cockpit-types";
+import { digestLabel } from "@/lib/utils";
 
 export function bandToneName(b: RiskBand): ToneName {
   if (b === "LOW") return "success";
@@ -359,7 +360,7 @@ export function buildView({ role, cases, selectedId, msgTo }: ViewInput): Cockpi
       .slice()
       .sort((a, b) => (a.quiet ? 1 : 0) - (b.quiet ? 1 : 0) || b.materiality - a.materiality);
     list = order.map((c) => rowVM(c, selectedId, role));
-    listKicker = "MORNING DIGEST · FRI 20 JUN";
+    listKicker = digestLabel();
     listTitle = "Your book";
     listSubtitle = "Ranked by materiality · click a client";
     listEmptyText = "No clients in your book.";

@@ -10,6 +10,7 @@ import { seedCases } from "@/lib/cockpit-seed";
 import { api } from "@/lib/api";
 import { alertToCase, DECISION_TO_ACTION } from "@/lib/alert-to-case";
 import type { Case, Decision, Role } from "@/lib/cockpit-types";
+import { nowStamp } from "@/lib/utils";
 
 const CASES_KEY = "dw_p1_cases_v2";
 const ROLE_KEY = "dw_p1_role";
@@ -35,10 +36,7 @@ async function hydrateFromBackend(): Promise<Case[] | null> {
 }
 
 function now(): string {
-  return (
-    "20 Jun " +
-    new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
-  );
+  return nowStamp();
 }
 
 function defaultRecipient(role: Role): Role {
@@ -64,6 +62,7 @@ export interface Cockpit {
   pick: (role: Role) => void;
   logout: () => void;
   select: (id: string) => void;
+  selectInitial: (id: string) => void;
   setMsgTo: (to: Role) => void;
   setMsgDraft: (text: string) => void;
   escalateCompliance: () => void;
@@ -223,6 +222,14 @@ export function useCockpit(): Cockpit {
     [role, update],
   );
 
+  // Default landing selection: show a case without "consuming" it. Unlike select(),
+  // this never starts a Compliance review or clears unread state, so simply opening
+  // the cockpit on the top-ranked case writes nothing to the audit trail. Those
+  // mutations stay reserved for a real click via select().
+  const selectInitial = useCallback((id: string) => {
+    setSelectedId(id);
+  }, []);
+
   // first line -> second line (up)
   const escalateCompliance = useCallback(() => {
     if (!selectedId || !role) return;
@@ -340,6 +347,7 @@ export function useCockpit(): Cockpit {
     pick,
     logout,
     select,
+    selectInitial,
     setMsgTo,
     setMsgDraft,
     escalateCompliance,

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useCockpit } from "@/lib/use-cockpit";
 import { buildView } from "@/lib/cockpit-view";
 import type { Decision } from "@/lib/cockpit-types";
@@ -27,8 +28,26 @@ export default function Cockpit() {
     if ((DECISIONS as string[]).includes(key)) return c.decide(key as Decision);
   }
 
+  // Land the user on the top-ranked case so the cockpit opens populated, not empty.
+  // selectInitial only shows the case; it does not start a review or clear unread,
+  // so merely opening the cockpit never writes to the audit trail.
+  useEffect(() => {
+    if (c.ready && c.role && !c.selectedId && view.list.length > 0) {
+      c.selectInitial(view.list[0].id);
+    }
+  }, [c.ready, c.role, c.selectedId, view.list, c.selectInitial]);
+
   if (!c.ready) {
-    return <div className="flex h-screen w-full flex-col bg-white" />;
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-white">
+        <div
+          className="dw-pulse font-mono text-xs font-medium"
+          style={{ letterSpacing: "0.30em", color: "oklch(0.5 0 0)" }}
+        >
+          DRIFTWATCH
+        </div>
+      </div>
+    );
   }
 
   if (view.isLogin) {

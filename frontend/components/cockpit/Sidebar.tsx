@@ -3,8 +3,8 @@
 import type { NavItemVM } from "@/lib/cockpit-view";
 
 // Left rail: a read-only overview of the role's caseload counts, the two lines-of-defence
-// legend, and a note that case state is shared across windows. The overview is informative
-// only; it is intentionally flat (not a clickable nav) in the prototype.
+// legend, and a live-sync presence indicator. The overview is informative only; it is
+// intentionally flat (not a clickable nav).
 export function Sidebar({ nav }: { nav: NavItemVM[] }) {
   return (
     <div
@@ -50,12 +50,15 @@ export function Sidebar({ nav }: { nav: NavItemVM[] }) {
         </div>
       </div>
       <div
-        className="px-2 pb-[2px] pt-[10px] font-mono text-[9px] leading-[1.6]"
-        style={{ letterSpacing: "0.1em", color: "oklch(0.68 0 0)" }}
+        className="flex items-center gap-[7px] px-2 pb-[2px] pt-[10px] font-mono text-[9px]"
+        style={{ letterSpacing: "0.1em", color: "oklch(0.6 0 0)" }}
       >
-        SHARED CASE STATE
-        <br />
-        SYNCS ACROSS WINDOWS
+        <span
+          className="dw-pulse inline-block h-[6px] w-[6px] rounded-full"
+          style={{ background: "#97c459" }}
+          aria-hidden="true"
+        />
+        LIVE · SYNCED ACROSS THE TEAM
       </div>
     </div>
   );
