@@ -7,6 +7,7 @@
   "tsconfig": "../.design-sync/tsconfig.ds.json",
   "buildCmd": "node .design-sync/build-css.mjs frontend",
   "cssEntry": ".ds-css/styles.css",
+  "readmeHeader": ".design-sync/conventions.md",
   "componentSrcMap": {
     "Button": "components/ui/button.tsx",
     "SeverityBadge": "components/ui/severity-badge.tsx",
@@ -15,6 +16,10 @@
     "CaseList": "components/cockpit/CaseList.tsx",
     "LoginScreen": "components/cockpit/LoginScreen.tsx",
     "Sidebar": "components/cockpit/Sidebar.tsx"
+  },
+  "overrides": {
+    "AppHeader": { "cardMode": "column" },
+    "CaseList": { "cardMode": "column" }
   },
   "dtsPropsFor": {
     "Button": "/** Visual style; default neutral, brand = high-contrast CTA. */ variant?: \"default\" | \"brand\" | \"outline\" | \"secondary\" | \"ghost\" | \"destructive\" | \"link\"; size?: \"default\" | \"xs\" | \"sm\" | \"lg\" | \"icon\" | \"icon-xs\" | \"icon-sm\" | \"icon-lg\"; className?: string; disabled?: boolean; type?: \"button\" | \"submit\" | \"reset\"; onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void; children?: React.ReactNode",
