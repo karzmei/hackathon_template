@@ -16,7 +16,7 @@ export default defineConfig({
     pool: "threads",
     coverage: {
       provider: "v8",
-      reporter: ["text", "html"],
+      reporter: ["text", "json-summary", "html"],
       exclude: [".next/**", "test/**", "e2e/**", "**/*.config.*", "**/*.d.ts"],
     },
   },

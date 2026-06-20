@@ -22,4 +22,22 @@ describe("CostMeter", () => {
     expect(screen.queryByText("DEEP")).not.toBeInTheDocument();
     expect(screen.queryByText("BASIC")).not.toBeInTheDocument();
   });
+
+  it("maps shallow depths to FAST and STD", () => {
+    const { rerender } = render(<CostMeter cost={cost} depth={1} />);
+    expect(screen.getByText("FAST")).toBeInTheDocument();
+    rerender(<CostMeter cost={cost} depth={2} />);
+    expect(screen.getByText("STD")).toBeInTheDocument();
+  });
+
+  it("renders a zero cost without breaking the format", () => {
+    render(<CostMeter cost={makeCost({ usd: 0, tokens_in: 0, tokens_out: 0 })} />);
+    expect(screen.getByText(/\$0\.0000/)).toBeInTheDocument();
+    expect(screen.getByText(/0 tok/)).toBeInTheDocument();
+  });
+
+  it("uses a custom label when given", () => {
+    render(<CostMeter cost={cost} label="today" />);
+    expect(screen.getByText(/today/)).toBeInTheDocument();
+  });
 });

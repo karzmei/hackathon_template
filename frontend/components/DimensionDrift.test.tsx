@@ -25,4 +25,9 @@ describe("DimensionDrift", () => {
     expect(within(items[0]).getByTestId("dimension-bar")).toBeInTheDocument();
     expect(within(items[1]).queryByTestId("dimension-bar")).not.toBeInTheDocument();
   });
+
+  it("renders an empty list when there are no dimensions", () => {
+    render(<DimensionDrift drift={makeDriftScore({ per_dimension: [] })} />);
+    expect(screen.queryAllByRole("listitem")).toHaveLength(0);
+  });
 });
