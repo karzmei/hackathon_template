@@ -82,22 +82,24 @@ class ComputeLiveProfileTest(unittest.TestCase):
 
 
 class ComputeDriftTest(unittest.TestCase):
-    def test_aggregate_sums_changed_dimension_weights(self):
+    def test_aggregate_weights_changed_dimension_by_confidence(self):
+        # One changed dimension contributes weight * signal_confidence, not the full weight.
         baseline = make_baseline()
-        signals = [make_signal(raw={"business_model": "Crypto OTC desk"})]
+        signals = [make_signal(confidence=0.8, raw={"business_model": "Crypto OTC desk"})]
         live = compute_live_profile(baseline, signals)
         drift = compute_drift(baseline, live, signals)
-        self.assertAlmostEqual(drift.aggregate, WEIGHTS[Dimension.business_model])
+        self.assertAlmostEqual(drift.aggregate, WEIGHTS[Dimension.business_model] * 0.8)
         self.assertEqual(drift.band, RiskBand.low)
 
     def test_band_high_at_threshold(self):
-        # business_model + ownership + legal_form + risk_rating = 0.25+0.20+0.15+0.15 = 0.75
+        # At full confidence the weighted sum reduces to the plain weights:
+        # business_model + ownership + legal_form + risk_rating = 0.25+0.20+0.15+0.15 = 0.75.
         baseline = make_baseline()
         signals = [
-            make_signal(raw={"business_model": "Crypto OTC desk"}),
-            make_signal(raw={"legal_form": "AG"}),
-            make_signal(raw={"risk_rating": "HIGH"}),
-            make_signal(raw={"add_owner": {"name": "New", "pct": 10}}),
+            make_signal(confidence=1.0, raw={"business_model": "Crypto OTC desk"}),
+            make_signal(confidence=1.0, raw={"legal_form": "AG"}),
+            make_signal(confidence=1.0, raw={"risk_rating": "HIGH"}),
+            make_signal(confidence=1.0, raw={"add_owner": {"name": "New", "pct": 10}}),
         ]
         live = compute_live_profile(baseline, signals)
         drift = compute_drift(baseline, live, signals)
@@ -105,12 +107,11 @@ class ComputeDriftTest(unittest.TestCase):
         self.assertEqual(drift.band, RiskBand.high)
 
     def test_band_medium_between_thresholds(self):
-        # legal_form + risk_rating = 0.15 + 0.15 = 0.30 is low; add business_model partial:
-        # ownership (0.20) + risk_rating (0.15) = 0.35 -> medium.
+        # At full confidence: ownership (0.20) + risk_rating (0.15) = 0.35 -> medium.
         baseline = make_baseline()
         signals = [
-            make_signal(raw={"add_owner": {"name": "New", "pct": 10}}),
-            make_signal(raw={"risk_rating": "HIGH"}),
+            make_signal(confidence=1.0, raw={"add_owner": {"name": "New", "pct": 10}}),
+            make_signal(confidence=1.0, raw={"risk_rating": "HIGH"}),
         ]
         live = compute_live_profile(baseline, signals)
         drift = compute_drift(baseline, live, signals)
@@ -126,16 +127,29 @@ class ComputeDriftTest(unittest.TestCase):
         self.assertEqual(drift.band, RiskBand.low)
         self.assertEqual(drift.invalidated_assumptions, [])
 
-    def test_per_dimension_has_all_six_with_binary_delta(self):
+    def test_per_dimension_has_all_six_with_confidence_delta(self):
+        # The changed dimension's delta is the signal confidence; unchanged ones are 0.0.
         baseline = make_baseline()
-        signals = [make_signal(raw={"domain": "new.io"})]
+        signals = [make_signal(confidence=0.8, raw={"domain": "new.io"})]
         live = compute_live_profile(baseline, signals)
         drift = compute_drift(baseline, live, signals)
         self.assertEqual(len(drift.per_dimension), 6)
         domain_dim = next(d for d in drift.per_dimension if d.dimension == Dimension.domain)
-        self.assertEqual(domain_dim.delta, 1.0)
+        self.assertEqual(domain_dim.delta, 0.8)
         self.assertEqual(domain_dim.from_value, baseline.domain)
         self.assertEqual(domain_dim.to_value, "new.io")
+
+    def test_dimension_delta_takes_max_confidence_of_its_signals(self):
+        # Two signals touch the same dimension; the higher confidence wins the delta.
+        baseline = make_baseline()
+        signals = [
+            make_signal(id="weak", confidence=0.4, raw={"business_model": "Crypto OTC desk"}),
+            make_signal(id="strong", confidence=0.9, raw={"business_model": "Crypto OTC desk"}),
+        ]
+        live = compute_live_profile(baseline, signals)
+        drift = compute_drift(baseline, live, signals)
+        bm = next(d for d in drift.per_dimension if d.dimension == Dimension.business_model)
+        self.assertEqual(bm.delta, 0.9)
 
     def test_invalidated_assumption_formatting(self):
         baseline = make_baseline()
@@ -160,16 +174,16 @@ class ComputeDriftTest(unittest.TestCase):
         drift = compute_drift(baseline, live, [])
         self.assertEqual(drift.confidence, 0.0)
 
-    def test_aggregate_capped_at_one(self):
-        # Every dimension changes; weights sum to 1.0, so aggregate must be exactly 1.0.
+    def test_aggregate_reaches_one_at_full_confidence(self):
+        # Every dimension changes at full confidence; weights sum to 1.0, so aggregate is 1.0.
         baseline = make_baseline()
         signals = [
-            make_signal(raw={"business_model": "X"}),
-            make_signal(raw={"legal_form": "AG"}),
-            make_signal(raw={"domain": "x.io"}),
-            make_signal(raw={"expected_volume_band": "high"}),
-            make_signal(raw={"risk_rating": "HIGH"}),
-            make_signal(raw={"add_owner": {"name": "New", "pct": 10}}),
+            make_signal(confidence=1.0, raw={"business_model": "X"}),
+            make_signal(confidence=1.0, raw={"legal_form": "AG"}),
+            make_signal(confidence=1.0, raw={"domain": "x.io"}),
+            make_signal(confidence=1.0, raw={"expected_volume_band": "high"}),
+            make_signal(confidence=1.0, raw={"risk_rating": "HIGH"}),
+            make_signal(confidence=1.0, raw={"add_owner": {"name": "New", "pct": 10}}),
         ]
         live = compute_live_profile(baseline, signals)
         drift = compute_drift(baseline, live, signals)
