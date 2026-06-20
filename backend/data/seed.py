@@ -13,6 +13,10 @@ the deltas in the fixture is what lets the whole pipeline run honestly offline.
 
 from __future__ import annotations
 
+from pathlib import Path
+
+from kyc_checkup.client_record_schema import ClientRecord
+from kyc_checkup.kyc_schemas import TriggerRequest
 from schemas import (
     BaselineProfile,
     Client,
@@ -22,6 +26,69 @@ from schemas import (
     SignalKind,
     Source,
     VolumeBand,
+)
+
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_CLIENT1_PATH = _REPO_ROOT / "simulated_data_samples" / "clients" / "client1.json"
+_CLIENT1_WEBSITE_TRIGGER_PATH = (
+    _REPO_ROOT
+    / "simulated_data_samples"
+    / "triggers"
+    / "client1_website_change.json"
+)
+
+_CLIENT1_RECORD = ClientRecord.model_validate_json(_CLIENT1_PATH.read_text(encoding="utf-8"))
+_CLIENT1_WEBSITE_TRIGGER = TriggerRequest.model_validate_json(
+    _CLIENT1_WEBSITE_TRIGGER_PATH.read_text(encoding="utf-8")
+)
+
+_client1_identification = _CLIENT1_RECORD.internal.identification
+_client1_kyc = _CLIENT1_RECORD.internal.kyc_baseline
+_client1_web = _CLIENT1_RECORD.external.web_presence
+
+_CLIENT1 = Client(
+    id=_CLIENT1_RECORD.client_id,
+    legal_name=_client1_identification.legal_name,
+    jurisdiction=_client1_identification.jurisdiction_of_incorporation,
+    onboarded_at=_client1_kyc.onboarding_date.isoformat(),
+    risk_rating=RiskRating(_client1_kyc.customer_risk_rating.upper()),
+)
+
+_CLIENT1_BASELINE = BaselineProfile(
+    client_id=_CLIENT1_RECORD.client_id,
+    business_model="B2B SaaS / logistics analytics",
+    expected_activity=_client1_kyc.expected_business_model,
+    expected_volume_band=VolumeBand.low,
+    owners=[
+        Owner(name=owner.name, pct=owner.ownership_pct, screened=True)
+        for owner in _CLIENT1_RECORD.internal.ownership.beneficial_owners
+    ],
+    legal_form=_client1_identification.legal_form,
+    domain=_client1_web.current_domain,
+    risk_rating=RiskRating(_client1_kyc.customer_risk_rating.upper()),
+)
+
+_website_payload = _CLIENT1_WEBSITE_TRIGGER.payload
+_website_drift = _website_payload["implied_drift"]
+_CLIENT1_WEBSITE_SIGNAL = Signal(
+    id="website-change-helvetia-analytics",
+    client_id=_CLIENT1_RECORD.client_id,
+    source=Source.wayback,
+    observed_at="2026-06-20T10:30:00Z",
+    kind=SignalKind.domain_change,
+    summary=(
+        "Website changed from logistics analytics SaaS to crypto OTC, "
+        "digital-asset treasury, and stablecoin settlement services."
+    ),
+    evidence_url=f"https://{_client1_web.current_domain}",
+    confidence=0.95,
+    raw={
+        **_website_drift,
+        "business_model": _website_drift["new_business_domain"],
+        "expected_volume_band": "high",
+        "risk_rating": "HIGH",
+    },
 )
 
 
@@ -71,6 +138,7 @@ BASELINES: dict[str, BaselineProfile] = {
         domain="lakeside-trading.ch",
         risk_rating=RiskRating.low,
     ),
+    _CLIENT1.id: _CLIENT1_BASELINE,
 }
 
 
@@ -139,6 +207,7 @@ SIGNALS: dict[str, list[Signal]] = {
             raw={},
         ),
     ],
+    _CLIENT1.id: [_CLIENT1_WEBSITE_SIGNAL],
 }
 
 
@@ -152,3 +221,11 @@ def baseline_for(client_id: str) -> BaselineProfile:
 
 def public_signals_for(client_id: str) -> list[Signal]:
     return SIGNALS.get(client_id, [])
+
+
+def helvetia_analytics_demo_client() -> Client:
+    return _CLIENT1
+
+
+def helvetia_analytics_website_change_trigger() -> TriggerRequest:
+    return _CLIENT1_WEBSITE_TRIGGER

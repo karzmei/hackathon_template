@@ -9,7 +9,13 @@ import asyncio
 import unittest
 
 import store
-from data.seed import all_clients, baseline_for, public_signals_for
+from data.seed import (
+    all_clients,
+    baseline_for,
+    helvetia_analytics_demo_client,
+    helvetia_analytics_website_change_trigger,
+    public_signals_for,
+)
 
 from main import cost_today, _sorted_rows
 from pipeline.step1_basic_filter import basic_filter
@@ -61,6 +67,24 @@ class LakesideControlTest(unittest.TestCase):
     def test_baseline_confirmed(self):
         self.assertEqual(self.alert.drift_score.aggregate, 0.0)
         self.assertEqual(self.alert.recommended_action, RecommendedAction.no_change)
+
+
+class HelvetiaAnalyticsWebsiteChangeTest(unittest.TestCase):
+    def test_material_website_change_reaches_review(self):
+        client = helvetia_analytics_demo_client()
+        trigger = helvetia_analytics_website_change_trigger()
+        signals = public_signals_for(client.id)
+
+        self.assertEqual(trigger.client_id, client.id)
+        self.assertEqual(basic_filter(signals), signals)
+
+        store.reset()
+        alert = asyncio.run(run_pipeline(client))
+
+        self.assertEqual(alert.analysis_depth, 3)
+        self.assertIn(alert.recommended_action, {RecommendedAction.edd, RecommendedAction.re_kyc})
+        self.assertIn("crypto OTC", alert.current.business_model)
+        self.assertIn("business model", " | ".join(alert.drift_score.invalidated_assumptions))
 
 
 class QueueOrderingTest(unittest.TestCase):
