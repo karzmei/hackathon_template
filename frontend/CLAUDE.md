@@ -20,18 +20,22 @@ windows so the handoff can be run live. The cockpit is frontend-only; it does no
 - `app/`: `layout.tsx` loads fonts (Geist, Source Serif 4) and `globals.css`; `page.tsx` is the
   cockpit. It calls the `useCockpit()` hook for state, builds the view model, renders the
   `LoginScreen` until a role is chosen, then the app shell, and routes detail-pane button keys to
-  the matching hook action.
+  the matching hook action. `app/dashboard/page.tsx` is the shared, read-only cost and efficiency
+  dashboard (any role); it reads `useCost()` and renders the `components/dashboard/` parts.
 - `components/cockpit/`: presentational, props-driven, `"use client"` components. `LoginScreen`
   (seat picker); `AppHeader` (brand, Compliance inbox pill, role badge, switch role); `Sidebar`
   (role nav + lines-of-defence legend); `CaseList` (the ranked middle rail); `CaseDetail` (the case
   file: risk delta, drift signals, what-changed timeline, key facts, recommendation, instruction
   flow, decision actions, case conversation, audit trail). `components/ui/` holds the shadcn/base-nova
-  primitives (`button`, `severity-badge`).
+  primitives (`button`, `severity-badge`). `components/dashboard/` holds the cost dashboard parts
+  (`CostSummary`, `CascadeFunnel`, `ModelSplit`, `ClientCostTable`, `EfficiencyCallout`).
 - `lib/`: `cockpit-types.ts` (model types + the `TONES`/`ROLES` maps), `cockpit-seed.ts` (the seven
   seeded cases), `cockpit-view.ts` (pure view-model helpers: `buildView`, `statusPill`, `recVM`,
   `rowVM`, `navItem`), `use-cockpit.ts` (the stateful hook: localStorage persistence, cross-window
   sync, all actions), `api.ts` (typed backend client, the `schemas.py` contract; not used by the
-  current cockpit but kept as the cross-language contract), `utils.ts` (`cn`).
+  current cockpit but kept as the cross-language contract), `cost-seed.ts` (the dashboard demo
+  data), `cost-view.ts` (pure dashboard view-model helpers), `use-cost.ts` (the dashboard hook:
+  demo seed, opt-in live `GET /api/cost/dashboard`), `utils.ts` (`cn`).
 - `e2e/`: Playwright `@smoke` specs. `test/setup.ts` is the Vitest setup (RTL matchers, cleanup).
 
 ## Commands (Windows / PowerShell)

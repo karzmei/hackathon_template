@@ -21,6 +21,12 @@ describe("LoginScreen", () => {
     expect(screen.getByText(/Escalations from the first line/)).toBeInTheDocument();
   });
 
+  it("links to the shared cost dashboard", () => {
+    render(<LoginScreen onPick={() => {}} />);
+    const link = screen.getByRole("link", { name: /COST & EFFICIENCY DASHBOARD/ });
+    expect(link).toHaveAttribute("href", "/dashboard");
+  });
+
   it("calls onPick with each chosen role", async () => {
     const onPick = vi.fn();
     render(<LoginScreen onPick={onPick} />);

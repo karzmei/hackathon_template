@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { ROLES, type Role } from "@/lib/cockpit-types";
 
 // The three seats, with the copy from the prototype. line2 marks the line of defence.
@@ -30,6 +31,8 @@ export function LoginScreen({ onPick }: { onPick: (role: Role) => void }) {
       className="flex flex-1 flex-col items-center justify-center overflow-y-auto p-8 text-center"
       style={{ background: "oklch(0.97 0 0)" }}
     >
+      {/* eslint-disable-next-line @next/next/no-img-element -- static brand mark, no optimisation needed */}
+      <img src="/driftwatch-icon.svg" alt="" className="mb-3 h-14 w-14" />
       <div className="font-mono text-[13px] font-medium" style={{ letterSpacing: "0.30em", color: "oklch(0.205 0 0)" }}>
         DRIFTWATCH
       </div>
@@ -98,8 +101,15 @@ export function LoginScreen({ onPick }: { onPick: (role: Role) => void }) {
           );
         })}
       </div>
+      <Link
+        href="/dashboard"
+        className="mt-[26px] rounded-full border bg-white px-[14px] py-[6px] font-mono text-[10px]"
+        style={{ letterSpacing: "0.14em", color: "oklch(0.4 0 0)", borderColor: "oklch(0.88 0 0)" }}
+      >
+        COST &amp; EFFICIENCY DASHBOARD &rarr;
+      </Link>
       <div
-        className="mt-[30px] flex items-center gap-[7px] font-mono text-[10px]"
+        className="mt-[16px] flex items-center gap-[7px] font-mono text-[10px]"
         style={{ letterSpacing: "0.16em", color: "oklch(0.6 0 0)" }}
       >
         <span
