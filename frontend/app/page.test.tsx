@@ -18,14 +18,14 @@ describe("Cockpit page (end-to-end journeys)", () => {
   it("FJ1: opens on the seat picker and an RM lands on their ranked book", async () => {
     render(<Cockpit />);
 
-    expect(await screen.findByText(/Who's on shift\?/)).toBeInTheDocument();
+    expect(await screen.findByText(/Select your role/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /Lena Brunner/ }));
 
     expect(await screen.findByText("Your book")).toBeInTheDocument();
     // The RM book lists owned clients; the high-materiality cases are present.
     expect(screen.getByRole("button", { name: /Castor Mining Ltd/ })).toBeInTheDocument();
-    // No case open yet, so the detail pane prompts for a selection.
-    expect(screen.getByText("Select a case to open it.")).toBeInTheDocument();
+    // The cockpit lands on the top-ranked case so the detail pane opens populated.
+    expect(await screen.findByRole("heading", { name: "Helvetia Capital AG" })).toBeInTheDocument();
   });
 
   it("FJ2: an RM escalates a case, status flips and the audit trail grows", async () => {
@@ -65,6 +65,6 @@ describe("Cockpit page (end-to-end journeys)", () => {
     expect(await screen.findByText("Accounts you own")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "SWITCH ROLE" }));
-    expect(await screen.findByRole("heading", { name: /Who's on shift\?/ })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /Select your role/ })).toBeInTheDocument();
   });
 });

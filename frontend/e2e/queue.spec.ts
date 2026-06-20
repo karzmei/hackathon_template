@@ -50,7 +50,7 @@ test("@smoke switching role returns to the seat picker", async ({ page }) => {
   await expect(page.getByText("Accounts you own")).toBeVisible();
 
   await page.getByRole("button", { name: "SWITCH ROLE" }).click();
-  await expect(page.getByRole("heading", { name: /Who's on shift\?/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Select your role/ })).toBeVisible();
 });
 
 // FJ3 in docs/USER_JOURNEYS.md: RM hands a complex case sideways to the Account Manager.

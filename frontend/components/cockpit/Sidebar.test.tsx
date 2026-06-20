@@ -45,11 +45,11 @@ describe("Sidebar", () => {
     }
   });
 
-  it("always renders the lines-of-defence legend and the cross-window notice", () => {
+  it("always renders the lines-of-defence legend and the live-sync indicator", () => {
     render(<Sidebar nav={navFor("am")} />);
     expect(screen.getByText("LINES OF DEFENCE")).toBeInTheDocument();
     expect(screen.getByText("1st · RM + AM (business)")).toBeInTheDocument();
     expect(screen.getByText("2nd · Compliance (control)")).toBeInTheDocument();
-    expect(screen.getByText(/SHARED CASE STATE/)).toBeInTheDocument();
+    expect(screen.getByText(/SYNCED ACROSS THE TEAM/)).toBeInTheDocument();
   });
 });

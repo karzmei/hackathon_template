@@ -14,8 +14,13 @@ const sourceSerif = Source_Serif_4({
 });
 
 export const metadata: Metadata = {
-  title: "DRIFTWATCH",
-  description: "Event-driven KYC drift intelligence",
+  title: "DRIFTWATCH · KYC Drift Cockpit",
+  description:
+    "Event-driven KYC drift intelligence: monitor corporate clients for drift from their onboarded baseline and work cited case files across the lines of defence.",
+};
+
+export const viewport = {
+  colorScheme: "light" as const,
 };
 
 export default function RootLayout({
