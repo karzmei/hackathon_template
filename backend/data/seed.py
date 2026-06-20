@@ -69,26 +69,31 @@ _CLIENT1_BASELINE = BaselineProfile(
     risk_rating=RiskRating(_client1_kyc.customer_risk_rating.upper()),
 )
 
-_website_payload = _CLIENT1_WEBSITE_TRIGGER.payload
-_website_drift = _website_payload["implied_drift"]
-_CLIENT1_WEBSITE_SIGNAL = Signal(
-    id="website-change-helvetia-analytics",
-    client_id=_CLIENT1_RECORD.client_id,
-    source=Source.wayback,
-    observed_at="2026-06-20T10:30:00Z",
-    kind=SignalKind.domain_change,
-    summary=(
-        "Website changed from logistics analytics SaaS to crypto OTC, "
-        "digital-asset treasury, and stablecoin settlement services."
-    ),
-    evidence_url=f"https://{_client1_web.current_domain}",
-    confidence=0.95,
-    raw={
-        **_website_drift,
-        "business_model": _website_drift["new_business_domain"],
-        "expected_volume_band": "high",
-        "risk_rating": "HIGH",
-    },
+
+def _signal_from_website_change_trigger(
+    trigger: TriggerRequest,
+    client_record: ClientRecord,
+) -> Signal:
+    payload = trigger.payload
+    return Signal(
+        id=trigger.trigger_id,
+        client_id=trigger.client_id,
+        source=Source.wayback,
+        observed_at="2026-06-20T10:30:00Z",
+        kind=SignalKind.domain_change,
+        summary=(
+            "Website changed from logistics analytics SaaS to crypto OTC, "
+            "digital-asset treasury, and stablecoin settlement services."
+        ),
+        evidence_url=f"https://{client_record.external.web_presence.current_domain}",
+        confidence=0.95,
+        raw={**payload["implied_drift"], **payload["profile_updates"]},
+    )
+
+
+_CLIENT1_WEBSITE_SIGNAL = _signal_from_website_change_trigger(
+    _CLIENT1_WEBSITE_TRIGGER,
+    _CLIENT1_RECORD,
 )
 
 

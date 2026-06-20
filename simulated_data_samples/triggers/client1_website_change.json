@@ -12,6 +12,11 @@
     "previous_text": "Helvetia Analytics helps logistics and supply-chain teams improve forecasting, routing, and operational planning through subscription analytics software.",
     "new_text": "Helvetia Analytics now supports institutional clients with digital-asset liquidity, crypto OTC execution, and stablecoin settlement workflows. Its new treasury desk helps corporate clients convert between CHF, EUR, USDC, and BTC for cross-border settlement and liquidity management.",
     "website_text": "Helvetia Analytics now supports institutional clients with digital-asset liquidity, crypto OTC execution, and stablecoin settlement workflows. Its new treasury desk helps corporate clients convert between CHF, EUR, USDC, and BTC for cross-border settlement and liquidity management.",
+    "profile_updates": {
+      "business_model": "crypto OTC / digital-asset treasury services",
+      "expected_volume_band": "high",
+      "risk_rating": "HIGH"
+    },
     "implied_drift": {
       "business_domain_changed": true,
       "previous_business_domain": "B2B SaaS / logistics analytics",
