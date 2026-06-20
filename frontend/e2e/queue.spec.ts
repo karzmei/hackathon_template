@@ -52,3 +52,47 @@ test("@smoke switching role returns to the seat picker", async ({ page }) => {
   await page.getByRole("button", { name: "SWITCH ROLE" }).click();
   await expect(page.getByRole("heading", { name: /Who's on shift\?/ })).toBeVisible();
 });
+
+// FJ3 in docs/USER_JOURNEYS.md: RM hands a complex case sideways to the Account Manager.
+test("@smoke RM hands Bernina over to the Account Manager", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: /Lena Brunner/ }).click();
+
+  await page.getByRole("button", { name: /Bernina Wealth Partners/ }).click();
+  await expect(page.getByRole("heading", { name: "Bernina Wealth Partners" })).toBeVisible();
+
+  await page.getByRole("button", { name: /Hand over to Account Manager/ }).click();
+  await expect(page.getByText("Reassigned to Account Manager").first()).toBeVisible();
+  await expect(page.getByText(/Handed over to Account Manager/)).toBeVisible();
+});
+
+// FJ5 in docs/USER_JOURNEYS.md: a Compliance Re-KYC instruction returns to the 1st line and is confirmed.
+test("@smoke the Re-KYC instruction returns to the RM and is confirmed", async ({ page }) => {
+  await page.goto("/");
+
+  // 2nd line decides Re-KYC on the flagged Helvetia case.
+  await page.getByRole("button", { name: /Sofia Keller/ }).click();
+  await page.getByRole("button", { name: /Helvetia Capital AG/ }).click();
+  await page.getByRole("button", { name: /Require Re-KYC/ }).click();
+  await expect(page.getByText(/written to audit log/)).toBeVisible();
+
+  // Hand back to the 1st line and confirm the instruction.
+  await page.getByRole("button", { name: "SWITCH ROLE" }).click();
+  await page.getByRole("button", { name: /Lena Brunner/ }).click();
+  await page.getByRole("button", { name: /Helvetia Capital AG/ }).click();
+
+  await page.getByRole("button", { name: "Confirm Re-KYC initiated" }).click();
+  await expect(page.getByText(/Confirmed Re-KYC initiated/)).toBeVisible();
+});
+
+// FJ7 in docs/USER_JOURNEYS.md: a quiet client is reviewed with no change.
+test("@smoke RM reviews a quiet client with no change", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: /Lena Brunner/ }).click();
+
+  await page.getByRole("button", { name: /Alpenrose Family Office/ }).click();
+  await expect(page.getByRole("heading", { name: "Alpenrose Family Office" })).toBeVisible();
+
+  await page.getByRole("button", { name: /Reviewed · no change/ }).click();
+  await expect(page.getByText(/Reviewed, no change/)).toBeVisible();
+});
