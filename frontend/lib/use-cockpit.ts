@@ -70,6 +70,7 @@ export interface Cockpit {
   handback: () => void;
   markReviewed: () => void;
   decide: (decision: Decision) => void;
+  contactOperations: (message: string) => void;
   confirmInstruction: () => void;
   sendMsg: () => void;
 }
@@ -199,8 +200,9 @@ export function useCockpit(): Cockpit {
       const opensForReview =
         role === "compliance" && (c.status === "flagged_by_rm" || c.status === "escalated_by_am");
       const clearsCaseUnread = role === "compliance" && !opensForReview && c.unread;
+      const clearsAmUnread = role === "am" && !!c.amUnread;
       const clearsMsgUnread = (c.messages || []).some((m) => m.to === role && !m.read);
-      if (!opensForReview && !clearsCaseUnread && !clearsMsgUnread) return;
+      if (!opensForReview && !clearsCaseUnread && !clearsAmUnread && !clearsMsgUnread) return;
 
       update(id, (x) => {
         if (opensForReview) {
@@ -212,6 +214,8 @@ export function useCockpit(): Cockpit {
           ];
         } else if (clearsCaseUnread) {
           x.unread = false;
+        } else if (clearsAmUnread) {
+          x.amUnread = false;
         }
         if (clearsMsgUnread) {
           x.messages = (x.messages || []).map((m) => (m.to === role ? { ...m, read: true } : m));
@@ -291,6 +295,7 @@ export function useCockpit(): Cockpit {
         doc_request: "Requested document (instruction to 1st line)",
         watchlist: "Added to watchlist",
         mlro: "Escalated to MLRO",
+        contact_ops: "Recommended reclassification to Operations (pending operations)",
         dismiss: "Dismissed, no action",
       };
       // Live mode: persist the decision to the backend audit trail too. Fire and
@@ -305,6 +310,35 @@ export function useCockpit(): Cockpit {
         x.instructionDone = false;
         x.unread = false;
         x.audit = [...x.audit, { ts: now(), actor: "Sofia Keller · Compliance", action: labels[decision] }];
+        return x;
+      });
+    },
+    [selectedId, update],
+  );
+
+  // Recommend reclassification to Operations. This only drafts a recommendation;
+  // operations performs the documented change, so it appends a recommendation entry
+  // (with the drafted text) and shows a "pending operations" pill without touching
+  // the case risk band.
+  const contactOperations = useCallback(
+    (message: string) => {
+      if (!selectedId) return;
+      const text = message.trim();
+      update(selectedId, (x) => {
+        x.status = "decided";
+        x.decision = "contact_ops";
+        x.instructionDone = false;
+        x.unread = false;
+        x.audit = [
+          ...x.audit,
+          {
+            ts: now(),
+            actor: "Sofia Keller · Compliance",
+            action: text
+              ? `Recommended reclassification to Operations (pending operations): ${text}`
+              : "Recommended reclassification to Operations (pending operations)",
+          },
+        ];
         return x;
       });
     },
@@ -355,6 +389,7 @@ export function useCockpit(): Cockpit {
     handback,
     markReviewed,
     decide,
+    contactOperations,
     confirmInstruction,
     sendMsg,
   };

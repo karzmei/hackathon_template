@@ -112,6 +112,20 @@ describe("useCockpit actions persist and audit", () => {
     expect(c.amUnread).toBe(true);
   });
 
+  it("clears the AM unread dot when the AM opens a handed-over case", () => {
+    const { result } = renderHook(() => useCockpit());
+    act(() => result.current.pick("rm"));
+    act(() => result.current.select("bernina"));
+    act(() => result.current.handover());
+    expect(caseById(storedCases(), "bernina").amUnread).toBe(true);
+
+    // Marco (AM) opens the reassigned case; the unread dot must clear.
+    act(() => result.current.logout());
+    act(() => result.current.pick("am"));
+    act(() => result.current.select("bernina"));
+    expect(caseById(storedCases(), "bernina").amUnread).toBe(false);
+  });
+
   it("handback returns an AM-owned case to the RM (FJ3 reverse)", () => {
     const { result } = renderHook(() => useCockpit());
     act(() => result.current.pick("am"));

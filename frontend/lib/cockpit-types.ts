@@ -25,6 +25,7 @@ export type Decision =
   | "doc_request"
   | "watchlist"
   | "mlro"
+  | "contact_ops"
   | "dismiss";
 
 // First-line recommendation surfaced on the case before any action is taken.
@@ -39,6 +40,8 @@ export interface CaseChange {
   dir: "negative" | "positive" | "neutral";
   text: string;
   src: string;
+  // Optional cited source link; when present the timeline renders src as a link.
+  url?: string;
 }
 
 export interface CaseMessage {

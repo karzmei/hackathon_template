@@ -30,6 +30,7 @@ export const DECISION_TO_ACTION: Record<Decision, RecommendedAction> = {
   doc_request: "edd",
   watchlist: "escalate",
   mlro: "escalate",
+  contact_ops: "escalate",
   dismiss: "no_change",
 };
 
@@ -115,6 +116,7 @@ function toChanges(signals: Signal[]): CaseChange[] {
       dir: "negative",
       text: s.summary,
       src: date ? `${source} · ${date}` : source,
+      url: s.evidence_url ?? undefined,
     };
   });
 }

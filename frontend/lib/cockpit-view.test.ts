@@ -240,10 +240,10 @@ describe("buildView detail assembly", () => {
     expect(keys).toEqual(["escalate", "handback", "reviewed"]);
   });
 
-  it("offers the five Compliance decisions on an undecided case", () => {
+  it("offers the Compliance decisions on an undecided case", () => {
     const view = buildView({ role: "compliance", cases: flagged("helvetia"), selectedId: "helvetia", msgTo: "rm" });
     const keys = view.detail?.actorButtons.map((b) => b.key);
-    expect(keys).toEqual(["re_kyc", "doc_request", "watchlist", "mlro", "dismiss"]);
+    expect(keys).toEqual(["re_kyc", "doc_request", "watchlist", "mlro", "contact_ops", "dismiss"]);
   });
 
   it("offers no actor buttons on a decided case", () => {

@@ -43,6 +43,8 @@ export function statusPill(c: Case): Pill {
       return pill(c.instructionDone ? "Document provided" : "Compliance: document requested", "warning");
     if (c.decision === "watchlist") return pill("Compliance: Watchlisted", "danger");
     if (c.decision === "mlro") return pill("Compliance: Escalated to MLRO", "info");
+    if (c.decision === "contact_ops")
+      return pill("Reclassification recommended; pending operations", "info");
     if (c.decision === "dismiss") return pill("Compliance: cleared, no action", "success");
   }
   if (c.status === "flagged_by_rm") return pill("Flagged · awaiting Compliance", "info");
@@ -198,6 +200,8 @@ export interface ChangeRow {
   src: string;
   dot: string;
   textColor: string;
+  // When present, the cited source label renders as a link to this URL.
+  url?: string;
 }
 
 export interface ThreadMessage {
@@ -214,6 +218,7 @@ export interface ThreadMessage {
 }
 
 export interface DetailVM {
+  caseId: string;
   client: string;
   lei: string;
   sector: string;
@@ -517,6 +522,12 @@ function outcomeFor(c: Case): { label: string; tone: ToneName; tail: string } | 
       return { label: "Added to watchlist", tone: "danger", tail: " and 1st line notified." };
     case "mlro":
       return { label: "Escalated to MLRO", tone: "info", tail: ", out of the first-line loop." };
+    case "contact_ops":
+      return {
+        label: "Reclassification recommended to Operations",
+        tone: "info",
+        tail: "; pending operations, no risk change applied.",
+      };
     case "dismiss":
       return { label: "Dismissed, no action", tone: "success", tail: "; 1st line notified." };
     default:
@@ -578,6 +589,8 @@ function buildDetail(sel: Case, role: Role): DetailVM {
       mk("doc_request", "Request document", "down to 1st line", "warning"),
       mk("watchlist", "Add to watchlist", "log", "danger"),
       mk("mlro", "Escalate to MLRO", "up to 3rd line", "info"),
+      // A recommendation, not an automatic change: it drafts a ticket; operations makes the change.
+      mk("contact_ops", "Recommend reclassification to Operations", "drafts a ticket to ops; ops makes the change", "info"),
       mk("dismiss", "Dismiss", "no action", "neutral"),
     ];
   }
@@ -642,6 +655,7 @@ function buildDetail(sel: Case, role: Role): DetailVM {
     src: ch.src,
     dot: ch.dir === "negative" ? "#e24b4a" : ch.dir === "positive" ? "#97c459" : "oklch(0.7 0 0)",
     textColor: ch.dir === "negative" ? "#501313" : "oklch(0.25 0 0)",
+    url: ch.url,
   }));
 
   // thread
@@ -663,6 +677,7 @@ function buildDetail(sel: Case, role: Role): DetailVM {
   });
 
   return {
+    caseId: sel.id,
     client: sel.client,
     lei: sel.lei,
     sector: sel.sector,

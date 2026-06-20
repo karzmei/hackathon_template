@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useCockpit } from "@/lib/use-cockpit";
 import { buildView } from "@/lib/cockpit-view";
 import type { Decision } from "@/lib/cockpit-types";
@@ -9,7 +9,10 @@ import { AppHeader } from "@/components/cockpit/AppHeader";
 import { Sidebar } from "@/components/cockpit/Sidebar";
 import { CaseList } from "@/components/cockpit/CaseList";
 import { CaseDetail } from "@/components/cockpit/CaseDetail";
+import { OpsDraftModal } from "@/components/cockpit/OpsDraftModal";
 
+// contact_ops is handled separately (it opens a draft modal), so it is not in the
+// direct-dispatch list of Compliance decisions.
 const DECISIONS: Decision[] = ["re_kyc", "doc_request", "watchlist", "mlro", "dismiss"];
 
 // The cockpit. A single page owning the state machine (via useCockpit) and routing
@@ -18,6 +21,7 @@ const DECISIONS: Decision[] = ["re_kyc", "doc_request", "watchlist", "mlro", "di
 export default function Cockpit() {
   const c = useCockpit();
   const view = buildView({ role: c.role, cases: c.cases, selectedId: c.selectedId, msgTo: c.msgTo });
+  const [opsOpen, setOpsOpen] = useState(false);
 
   // Dispatch a CaseDetail actor-button key to the corresponding hook action.
   function onAction(key: string) {
@@ -25,6 +29,8 @@ export default function Cockpit() {
     if (key === "handover") return c.handover();
     if (key === "handback") return c.handback();
     if (key === "reviewed") return c.markReviewed();
+    // A recommendation, not an automatic change: open the draft modal instead of mutating.
+    if (key === "contact_ops") return setOpsOpen(true);
     if ((DECISIONS as string[]).includes(key)) return c.decide(key as Decision);
   }
 
@@ -67,17 +73,32 @@ export default function Cockpit() {
           <CaseList view={view} onSelect={c.select} />
           <div className="min-w-0 flex-1 overflow-y-auto bg-white">
             {view.hasDetail && view.detail ? (
-              <CaseDetail
-                detail={view.detail}
-                recipients={view.msgRecipients}
-                msgDraft={c.msgDraft}
-                msgPlaceholder={view.msgPlaceholder}
-                onAction={onAction}
-                onConfirmInstruction={c.confirmInstruction}
-                onPickRecipient={c.setMsgTo}
-                onMsgChange={c.setMsgDraft}
-                onSend={c.sendMsg}
-              />
+              <>
+                <CaseDetail
+                  detail={view.detail}
+                  recipients={view.msgRecipients}
+                  msgDraft={c.msgDraft}
+                  msgPlaceholder={view.msgPlaceholder}
+                  onAction={onAction}
+                  onConfirmInstruction={c.confirmInstruction}
+                  onPickRecipient={c.setMsgTo}
+                  onMsgChange={c.setMsgDraft}
+                  onSend={c.sendMsg}
+                />
+                <OpsDraftModal
+                  open={opsOpen}
+                  context={{
+                    client: view.detail.client,
+                    recommendedBand: view.detail.band,
+                    topReason: view.detail.headline,
+                  }}
+                  onSend={(message) => {
+                    c.contactOperations(message);
+                    setOpsOpen(false);
+                  }}
+                  onClose={() => setOpsOpen(false)}
+                />
+              </>
             ) : (
               <div className="flex h-full items-center justify-center text-[13px]" style={{ color: "oklch(0.62 0 0)" }}>
                 Select a case to open it.

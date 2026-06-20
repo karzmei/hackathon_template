@@ -1,9 +1,21 @@
 "use client";
 
-import { ArrowDown, ArrowRight, ArrowUp, Check, Flag, type LucideIcon } from "lucide-react";
+import { useState } from "react";
+import {
+  ArrowDown,
+  ArrowRight,
+  ArrowUp,
+  Check,
+  Copy,
+  ExternalLink,
+  Flag,
+  Send,
+  type LucideIcon,
+} from "lucide-react";
 
 import type { Role } from "@/lib/cockpit-types";
 import type { DetailVM, RecipientVM } from "@/lib/cockpit-view";
+import { copyToClipboard } from "@/lib/utils";
 
 const KICKER = "font-mono text-[10px]";
 const KICKER_STYLE = { letterSpacing: "0.14em", color: "oklch(0.5 0 0)" } as const;
@@ -18,9 +30,42 @@ const ACTION_ICON: Record<string, LucideIcon> = {
   re_kyc: ArrowDown,
   doc_request: ArrowDown,
   watchlist: Flag,
+  contact_ops: Send,
   reviewed: Check,
   dismiss: Check,
 };
+
+// The case id as a small monospace label with a copy-to-clipboard button; the icon
+// flips to a check briefly after a successful copy.
+function CaseIdCopy({ caseId }: { caseId: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    try {
+      await copyToClipboard(caseId);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1200);
+    } catch {
+      // ignore clipboard failures; the id stays visible to copy by hand
+    }
+  }
+
+  const Icon = copied ? Check : Copy;
+  return (
+    <span className="mt-[5px] flex items-center gap-[6px] font-mono text-[10px]" style={{ color: "oklch(0.6 0 0)" }}>
+      <span>ID {caseId}</span>
+      <button
+        type="button"
+        onClick={handleCopy}
+        aria-label="Copy case ID"
+        className="flex cursor-pointer items-center rounded-[5px] border-none bg-transparent p-[2px]"
+        style={{ color: copied ? "#3f7a1f" : "oklch(0.55 0 0)" }}
+      >
+        <Icon size={12} strokeWidth={2} aria-hidden />
+      </button>
+    </span>
+  );
+}
 
 export interface CaseDetailProps {
   detail: DetailVM;
@@ -60,6 +105,7 @@ export function CaseDetail({
           <div className="mt-[5px] font-mono text-[10.5px]" style={{ color: "oklch(0.556 0 0)" }}>
             LEI {d.lei} · {d.sector} · {d.domicile}
           </div>
+          <CaseIdCopy caseId={d.caseId} />
         </div>
         <div className="flex flex-none items-center gap-2">
           {d.showDelta && (
@@ -150,7 +196,20 @@ export function CaseDetail({
                 {ch.text}
               </div>
               <div className="mt-[3px] font-mono text-[10px]" style={{ color: "oklch(0.6 0 0)" }}>
-                {ch.src}
+                {ch.url ? (
+                  <a
+                    href={ch.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-[4px] underline"
+                    style={{ color: "oklch(0.45 0 0)" }}
+                  >
+                    {ch.src}
+                    <ExternalLink size={10} strokeWidth={2} aria-hidden />
+                  </a>
+                ) : (
+                  ch.src
+                )}
               </div>
             </div>
           </div>

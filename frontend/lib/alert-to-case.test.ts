@@ -110,8 +110,18 @@ describe("alertToCase mapping", () => {
   it("builds the cited what-changed timeline from the public signals", () => {
     const c = alertToCase(helvetiaAlert());
     expect(c.changes).toEqual([
-      { dir: "negative", text: "Website overhauled into a crypto OTC trading desk", src: "Web archive · 4 May" },
-      { dir: "negative", text: "New 40% shareholder Nordwind Holdings Ltd", src: "ZEFIX registry · 10 May" },
+      {
+        dir: "negative",
+        text: "Website overhauled into a crypto OTC trading desk",
+        src: "Web archive · 4 May",
+        url: "https://web.archive.org/x",
+      },
+      {
+        dir: "negative",
+        text: "New 40% shareholder Nordwind Holdings Ltd",
+        src: "ZEFIX registry · 10 May",
+        url: undefined,
+      },
     ]);
   });
 
@@ -189,6 +199,7 @@ describe("DECISION_TO_ACTION", () => {
       doc_request: "edd",
       watchlist: "escalate",
       mlro: "escalate",
+      contact_ops: "escalate",
       dismiss: "no_change",
     };
     expect(DECISION_TO_ACTION).toEqual(expected);

@@ -1,13 +1,15 @@
 """@unit tests for the deterministic drift engine and the cheap filter.
 
 Pure functions only; no I/O, no LLM, no store. These pin the numeric behaviour the
-demo depends on: materiality cut-off, delta application, weights, band thresholds.
+demo depends on: materiality cut-off, delta application, severities, L2
+aggregation, band thresholds.
 """
 
 import unittest
 
 from tests.factories import make_baseline, make_owner, make_signal
 
+from data.seed import baseline_for, public_signals_for
 from drift_config import HIGH_THRESHOLD, MATERIALITY_THRESHOLD, MEDIUM_THRESHOLD, WEIGHTS
 from pipeline.drift_engine import (
     _owners_label,
@@ -56,6 +58,7 @@ class ComputeLiveProfileTest(unittest.TestCase):
             make_signal(raw={"business_model": "Crypto OTC desk"}),
             make_signal(raw={"domain": "acme-otc.io"}),
             make_signal(raw={"legal_form": "AG"}),
+            make_signal(raw={"jurisdiction": "RU (high risk)"}),
             make_signal(raw={"expected_volume_band": "high"}),
             make_signal(raw={"risk_rating": "HIGH"}),
             make_signal(raw={"add_owner": {"name": "Nordwind Ltd", "pct": 40, "screened": False}}),
@@ -64,6 +67,7 @@ class ComputeLiveProfileTest(unittest.TestCase):
         self.assertEqual(live.business_model, "Crypto OTC desk")
         self.assertEqual(live.domain, "acme-otc.io")
         self.assertEqual(live.legal_form, "AG")
+        self.assertEqual(live.jurisdiction, "RU (high risk)")
         self.assertEqual(live.expected_volume_band, VolumeBand.high)
         self.assertEqual(live.risk_rating, RiskRating.high)
         self.assertEqual(len(live.owners), 3)
@@ -82,42 +86,66 @@ class ComputeLiveProfileTest(unittest.TestCase):
 
 
 class ComputeDriftTest(unittest.TestCase):
-    def test_aggregate_weights_changed_dimension_by_confidence(self):
-        # One changed dimension contributes weight * signal_confidence, not the full weight.
+    def test_single_change_contribution_is_severity_times_confidence(self):
+        # One changed dimension contributes severity * signal_confidence; with a single
+        # contribution the L2 norm equals that contribution.
         baseline = make_baseline()
         signals = [make_signal(confidence=0.8, raw={"business_model": "Crypto OTC desk"})]
         live = compute_live_profile(baseline, signals)
         drift = compute_drift(baseline, live, signals)
-        self.assertAlmostEqual(drift.aggregate, WEIGHTS[Dimension.business_model] * 0.8)
-        self.assertEqual(drift.band, RiskBand.low)
+        self.assertAlmostEqual(drift.aggregate, WEIGHTS[Dimension.business_model] * 0.8, places=4)
 
-    def test_band_high_at_threshold(self):
-        # At full confidence the weighted sum reduces to the plain weights:
-        # business_model + ownership + legal_form + risk_rating = 0.25+0.20+0.15+0.15 = 0.75.
+    def test_one_big_risk_beats_many_small_ones(self):
+        # L2 / biggest-risk behaviour: a single severity-1.0 full-confidence change scores
+        # HIGHER than several severity~0.4 changes whose naive additive sum would be larger.
         baseline = make_baseline()
-        signals = [
-            make_signal(confidence=1.0, raw={"business_model": "Crypto OTC desk"}),
+
+        big_signals = [make_signal(confidence=1.0, raw={"risk_rating": "HIGH"})]
+        big = compute_drift(baseline, compute_live_profile(baseline, big_signals), big_signals)
+
+        # domain (0.4) + expected_volume (0.4) -> additive sum 0.8 > 1.0? no; build three
+        # low-severity changes so the naive sum (1.2) exceeds the single big one (1.0).
+        small_signals = [
+            make_signal(confidence=1.0, raw={"domain": "new.io"}),
+            make_signal(confidence=1.0, raw={"expected_volume_band": "high"}),
             make_signal(confidence=1.0, raw={"legal_form": "AG"}),
-            make_signal(confidence=1.0, raw={"risk_rating": "HIGH"}),
-            make_signal(confidence=1.0, raw={"add_owner": {"name": "New", "pct": 10}}),
         ]
+        small = compute_drift(baseline, compute_live_profile(baseline, small_signals), small_signals)
+
+        naive_sum_small = WEIGHTS[Dimension.domain] + WEIGHTS[Dimension.expected_volume] + WEIGHTS[Dimension.legal_form]
+        self.assertGreater(naive_sum_small, big.aggregate)  # additive would rank small higher
+        self.assertGreater(big.aggregate, small.aggregate)  # L2 ranks the single big risk higher
+
+    def test_max_severity_full_confidence_dominates_to_high(self):
+        # A single max-severity (risk_rating 1.0) full-confidence change pushes a high aggregate.
+        baseline = make_baseline()
+        signals = [make_signal(confidence=1.0, raw={"risk_rating": "HIGH"})]
         live = compute_live_profile(baseline, signals)
         drift = compute_drift(baseline, live, signals)
+        self.assertAlmostEqual(drift.aggregate, 1.0, places=4)
         self.assertGreaterEqual(drift.aggregate, HIGH_THRESHOLD)
         self.assertEqual(drift.band, RiskBand.high)
 
-    def test_band_medium_between_thresholds(self):
-        # At full confidence: ownership (0.20) + risk_rating (0.15) = 0.35 -> medium.
+    def test_single_low_severity_modest_change_is_low(self):
+        # Only domain (severity 0.4) at modest confidence stays LOW.
         baseline = make_baseline()
-        signals = [
-            make_signal(confidence=1.0, raw={"add_owner": {"name": "New", "pct": 10}}),
-            make_signal(confidence=1.0, raw={"risk_rating": "HIGH"}),
-        ]
+        signals = [make_signal(confidence=0.6, raw={"domain": "new.io"})]
         live = compute_live_profile(baseline, signals)
         drift = compute_drift(baseline, live, signals)
-        self.assertGreaterEqual(drift.aggregate, MEDIUM_THRESHOLD)
-        self.assertLess(drift.aggregate, HIGH_THRESHOLD)
-        self.assertEqual(drift.band, RiskBand.medium)
+        self.assertLess(drift.aggregate, MEDIUM_THRESHOLD)
+        self.assertEqual(drift.band, RiskBand.low)
+
+    def test_jurisdiction_change_flows_through_and_contributes(self):
+        # A jurisdiction raw delta moves the live profile and lifts the score.
+        baseline = make_baseline()
+        signals = [make_signal(confidence=1.0, raw={"jurisdiction": "RU (high risk)"})]
+        live = compute_live_profile(baseline, signals)
+        self.assertEqual(live.jurisdiction, "RU (high risk)")
+        drift = compute_drift(baseline, live, signals)
+        jur = next(d for d in drift.per_dimension if d.dimension == Dimension.jurisdiction)
+        self.assertEqual(jur.delta, 1.0)
+        self.assertEqual(jur.weight, WEIGHTS[Dimension.jurisdiction])
+        self.assertAlmostEqual(drift.aggregate, WEIGHTS[Dimension.jurisdiction], places=4)
 
     def test_no_change_is_low_band_zero_aggregate(self):
         baseline = make_baseline()
@@ -127,13 +155,13 @@ class ComputeDriftTest(unittest.TestCase):
         self.assertEqual(drift.band, RiskBand.low)
         self.assertEqual(drift.invalidated_assumptions, [])
 
-    def test_per_dimension_has_all_six_with_confidence_delta(self):
+    def test_per_dimension_has_all_seven_with_confidence_delta(self):
         # The changed dimension's delta is the signal confidence; unchanged ones are 0.0.
         baseline = make_baseline()
         signals = [make_signal(confidence=0.8, raw={"domain": "new.io"})]
         live = compute_live_profile(baseline, signals)
         drift = compute_drift(baseline, live, signals)
-        self.assertEqual(len(drift.per_dimension), 6)
+        self.assertEqual(len(drift.per_dimension), 7)
         domain_dim = next(d for d in drift.per_dimension if d.dimension == Dimension.domain)
         self.assertEqual(domain_dim.delta, 0.8)
         self.assertEqual(domain_dim.from_value, baseline.domain)
@@ -174,12 +202,13 @@ class ComputeDriftTest(unittest.TestCase):
         drift = compute_drift(baseline, live, [])
         self.assertEqual(drift.confidence, 0.0)
 
-    def test_aggregate_reaches_one_at_full_confidence(self):
-        # Every dimension changes at full confidence; weights sum to 1.0, so aggregate is 1.0.
+    def test_aggregate_caps_at_one_at_full_confidence(self):
+        # Every dimension changes at full confidence; the L2 norm exceeds 1.0 and is capped.
         baseline = make_baseline()
         signals = [
             make_signal(confidence=1.0, raw={"business_model": "X"}),
             make_signal(confidence=1.0, raw={"legal_form": "AG"}),
+            make_signal(confidence=1.0, raw={"jurisdiction": "RU (high risk)"}),
             make_signal(confidence=1.0, raw={"domain": "x.io"}),
             make_signal(confidence=1.0, raw={"expected_volume_band": "high"}),
             make_signal(confidence=1.0, raw={"risk_rating": "HIGH"}),
@@ -188,6 +217,15 @@ class ComputeDriftTest(unittest.TestCase):
         live = compute_live_profile(baseline, signals)
         drift = compute_drift(baseline, live, signals)
         self.assertEqual(drift.aggregate, 1.0)
+
+    def test_helvetia_seed_computes_to_high(self):
+        # Demo invariant: the real Helvetia baseline + signals must land in band HIGH.
+        baseline = baseline_for("helvetia")
+        signals = public_signals_for("helvetia")
+        live = compute_live_profile(baseline, signals)
+        drift = compute_drift(baseline, live, signals)
+        self.assertEqual(drift.band, RiskBand.high)
+        self.assertGreaterEqual(drift.aggregate, HIGH_THRESHOLD)
 
 
 class RecommendActionTest(unittest.TestCase):

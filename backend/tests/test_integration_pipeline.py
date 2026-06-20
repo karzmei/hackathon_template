@@ -46,8 +46,8 @@ class HelvetiaCascadeTest(unittest.TestCase):
         self.assertEqual(self.alert.cost, cost2.add(cost3))
         self.assertGreater(self.alert.cost.usd, 0)
 
-    def test_drift_has_six_dimensions(self):
-        self.assertEqual(len(self.alert.drift_score.per_dimension), 6)
+    def test_drift_has_seven_dimensions(self):
+        self.assertEqual(len(self.alert.drift_score.per_dimension), 7)
 
     def test_created_audit_event_is_recorded(self):
         events = store.audit_for("alert-helvetia")

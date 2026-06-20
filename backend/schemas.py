@@ -34,6 +34,10 @@ class SignalKind(str, Enum):
     funding = "funding"
     onchain_exposure = "onchain_exposure"
     dormancy_break = "dormancy_break"
+    # AML-specific signals (the analyst's core review surface).
+    pep_hit = "pep_hit"                                # politically exposed person match
+    high_risk_jurisdiction = "high_risk_jurisdiction"  # funds to/from a high-risk country
+    suspicious_activity = "suspicious_activity"         # post-transaction structuring / pattern
 
 
 class Dimension(str, Enum):
@@ -108,6 +112,9 @@ class BaselineProfile(BaseModel):
     legal_form: str
     domain: str
     risk_rating: RiskRating
+    # Jurisdiction risk label (the key signal for fiat flows); defaulted so existing
+    # constructions stay valid while the seed baselines fill it in explicitly.
+    jurisdiction: str = "CH (low risk)"
 
 
 class Signal(BaseModel):

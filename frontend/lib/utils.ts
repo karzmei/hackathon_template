@@ -12,6 +12,12 @@ export function nowStamp(d: Date = new Date()): string {
   return `${date} ${time}`;
 }
 
+// Copy text to the clipboard. Thin wrapper over navigator.clipboard so callers can
+// await it and swap implementations without touching the UI.
+export async function copyToClipboard(text: string): Promise<void> {
+  await navigator.clipboard.writeText(text);
+}
+
 // The RM digest kicker for today, e.g. "MORNING DIGEST · FRI 20 JUN".
 export function digestLabel(d: Date = new Date()): string {
   const day = d

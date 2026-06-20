@@ -127,6 +127,7 @@ BASELINES: dict[str, BaselineProfile] = {
         legal_form="GmbH",
         domain="helvetia-saas.ch",
         risk_rating=RiskRating.low,
+        jurisdiction="CH (low risk)",
     ),
     "lakeside": BaselineProfile(
         client_id="lakeside",
@@ -137,6 +138,7 @@ BASELINES: dict[str, BaselineProfile] = {
         legal_form="AG",
         domain="lakeside-trading.ch",
         risk_rating=RiskRating.low,
+        jurisdiction="CH (low risk)",
     ),
     _CLIENT1.id: _CLIENT1_BASELINE,
 }
@@ -192,6 +194,62 @@ SIGNALS: dict[str, list[Signal]] = {
             evidence_url=None,
             confidence=0.75,
             raw={"expected_volume_band": "high"},
+        ),
+        Signal(
+            id="hv-5",
+            client_id="helvetia",
+            source=Source.opensanctions,
+            observed_at="2026-06-11",
+            kind=SignalKind.pep_hit,
+            summary=(
+                "Screening match: the UBO behind new 40% shareholder Nordwind Holdings Ltd "
+                "is a politically exposed person, a sitting foreign deputy minister."
+            ),
+            evidence_url="https://opensanctions.org/entities/nordwind-ubo",
+            confidence=0.8,
+            raw={"risk_rating": "HIGH"},
+        ),
+        Signal(
+            id="hv-6",
+            client_id="helvetia",
+            source=Source.internal_tx,
+            observed_at="2026-06-13",
+            kind=SignalKind.high_risk_jurisdiction,
+            summary=(
+                "Post-transaction monitoring: large inbound and outbound wires routed "
+                "through a high-risk jurisdiction (Cayman Islands) inconsistent with the profile."
+            ),
+            evidence_url=None,
+            confidence=0.78,
+            raw={"jurisdiction": "KY (high risk)", "risk_rating": "HIGH"},
+        ),
+        Signal(
+            id="hv-7",
+            client_id="helvetia",
+            source=Source.internal_tx,
+            observed_at="2026-06-15",
+            kind=SignalKind.suspicious_activity,
+            summary=(
+                "Post-transaction monitoring: many small transfers just under the reporting "
+                "threshold within a short window, a structuring pattern."
+            ),
+            evidence_url=None,
+            confidence=0.7,
+            raw={"risk_rating": "HIGH"},
+        ),
+        Signal(
+            id="hv-8",
+            client_id="helvetia",
+            source=Source.gdelt,
+            observed_at="2026-06-17",
+            kind=SignalKind.adverse_media,
+            summary=(
+                "Wire report: FINMA opens a regulatory probe into Helvetia SaaS GmbH over "
+                "alleged unlicensed crypto brokerage and AML control failures."
+            ),
+            evidence_url="/sources/helvetia-probe.html",
+            confidence=0.72,
+            raw={"risk_rating": "HIGH"},
         ),
     ],
     "lakeside": [
