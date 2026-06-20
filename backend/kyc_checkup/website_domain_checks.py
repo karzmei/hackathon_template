@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import math
 import re
-from typing import Any
+from typing import Any, Literal
 
 from kyc_checkup.kyc_schemas import (
     AnchorMatch,
@@ -166,7 +166,10 @@ def detect_no_go_terms(text: str) -> list[NoGoHit]:
     return hits
 
 
-def decide_alert_level(drift_score: float, no_go_hits: list[NoGoHit]) -> str:
+def decide_alert_level(
+    drift_score: float,
+    no_go_hits: list[NoGoHit],
+) -> Literal["none", "low", "medium", "high"]:
     category_counts = {
         hit.category: sum(other.category == hit.category for other in no_go_hits)
         for hit in no_go_hits
