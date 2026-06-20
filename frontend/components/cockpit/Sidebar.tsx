@@ -2,22 +2,23 @@
 
 import type { NavItemVM } from "@/lib/cockpit-view";
 
-// Left rail: role-specific navigation, the two lines-of-defence legend, and a note
-// that case state is shared across windows. Nav is display-only in the prototype.
+// Left rail: a read-only overview of the role's caseload counts, the two lines-of-defence
+// legend, and a note that case state is shared across windows. The overview is informative
+// only; it is intentionally flat (not a clickable nav) in the prototype.
 export function Sidebar({ nav }: { nav: NavItemVM[] }) {
   return (
     <div
-      className="flex w-[212px] flex-none flex-col gap-[3px] border-r p-[16px_12px]"
+      className="flex w-[212px] flex-none flex-col gap-[1px] border-r p-[16px_12px]"
       style={{ borderColor: "oklch(0.922 0 0)", background: "oklch(0.985 0 0)" }}
     >
       <div className="px-2 pb-2 pt-1 font-mono text-[9.5px]" style={{ letterSpacing: "0.16em", color: "oklch(0.6 0 0)" }}>
-        NAVIGATION
+        OVERVIEW
       </div>
       {nav.map((n) => (
         <div
           key={n.label}
-          className="flex items-center justify-between rounded-lg px-[10px] py-[9px] text-[13px]"
-          style={{ background: n.bg, border: n.border, fontWeight: n.weight, color: n.color }}
+          className="flex select-none items-center justify-between px-[10px] py-[5px] text-[13px]"
+          style={{ color: "oklch(0.45 0 0)" }}
         >
           <span>{n.label}</span>
           {n.hasCount && (

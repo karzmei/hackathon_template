@@ -145,11 +145,6 @@ export interface NavItemVM {
   label: string;
   count: number;
   hasCount: boolean;
-  active: boolean;
-  weight: string;
-  bg: string;
-  border: string;
-  color: string;
   countBg: string;
   countColor: string;
 }
@@ -157,7 +152,6 @@ export interface NavItemVM {
 export function navItem(
   label: string,
   count: number,
-  active: boolean,
   showCount: boolean,
   countTone?: ToneName,
 ): NavItemVM {
@@ -166,11 +160,6 @@ export function navItem(
     label,
     count,
     hasCount: showCount,
-    active,
-    weight: active ? "500" : "400",
-    bg: active ? "#fff" : "transparent",
-    border: active ? "1px solid oklch(0.9 0 0)" : "1px solid transparent",
-    color: active ? "oklch(0.205 0 0)" : "oklch(0.5 0 0)",
     countBg: ct ? ct.bg : "oklch(0.205 0 0)",
     countColor: ct ? ct.text : "#fff",
   };
@@ -386,29 +375,29 @@ export function buildView({ role, cases, selectedId, msgTo }: ViewInput): Cockpi
         !c.instructionDone,
     ).length;
     nav = [
-      navItem("Morning digest", 0, true, false),
-      navItem("My clients", cases.filter((c) => c.owner === "rm").length, false, true),
-      navItem("Escalated by me", flagged, false, flagged > 0, "info"),
-      navItem("Compliance requests", instr, false, instr > 0, "warning"),
+      navItem("Morning digest", 0, false),
+      navItem("My clients", cases.filter((c) => c.owner === "rm").length, true),
+      navItem("Escalated by me", flagged, flagged > 0, "info"),
+      navItem("Compliance requests", instr, instr > 0, "warning"),
     ];
   } else if (role === "am") {
     const handed = cases.filter((c) => c.owner === "am" && c.status === "handed_to_am").length;
     const esc = cases.filter((c) => c.owner === "am" && c.status === "escalated_by_am").length;
     nav = [
-      navItem("Structural watch", 0, true, false),
-      navItem("Accounts I own", cases.filter((c) => c.owner === "am").length, false, true),
-      navItem("Handed to me", handed, false, handed > 0, "info"),
-      navItem("Escalated by me", esc, false, esc > 0, "info"),
+      navItem("Structural watch", 0, false),
+      navItem("Accounts I own", cases.filter((c) => c.owner === "am").length, true),
+      navItem("Handed to me", handed, handed > 0, "info"),
+      navItem("Escalated by me", esc, esc > 0, "info"),
     ];
   } else if (role === "compliance") {
     const need = cases.filter((c) => inboxElig(c) && c.status !== "decided").length;
     const review = cases.filter((c) => c.status === "in_compliance_review").length;
     const decided = cases.filter((c) => c.status === "decided").length;
     nav = [
-      navItem("Inbox", need, true, true, "danger"),
-      navItem("In review", review, false, review > 0, "info"),
-      navItem("Decided", decided, false, decided > 0, "success"),
-      navItem("Audit log", 0, false, false),
+      navItem("Inbox", need, true, "danger"),
+      navItem("In review", review, review > 0, "info"),
+      navItem("Decided", decided, decided > 0, "success"),
+      navItem("Audit log", 0, false),
     ];
   }
 
