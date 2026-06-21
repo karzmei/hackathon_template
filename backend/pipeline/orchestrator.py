@@ -25,6 +25,8 @@ from schemas import (
     LiveProfile,
     RecommendedAction,
     RiskBand,
+    Signal,
+    SignalKind,
 )
 from sources.private_source import get_baseline
 from sources.public_source import fetch_public_signals
@@ -59,6 +61,26 @@ def _no_change_drift(baseline: BaselineProfile) -> DriftScore:
         confidence=1.0,
         invalidated_assumptions=[],
     )
+
+
+def _definite_rekyc_signal_case(signal: Signal) -> str | None:
+    if signal.kind == SignalKind.registry_change and "legal name" in signal.summary.casefold():
+        return "legal-name change"
+    if signal.kind == SignalKind.ownership_change:
+        return "ownership change"
+    return None
+
+
+def _collect_definite_rekyc_signals(signals: list[Signal]) -> tuple[list[Signal], list[str]]:
+    detected: list[Signal] = []
+    cases: list[str] = []
+    for signal in signals:
+        case = _definite_rekyc_signal_case(signal)
+        if case:
+            detected.append(signal)
+            if case not in cases:
+                cases.append(case)
+    return detected, cases
 
 
 def _assemble(
@@ -119,6 +141,24 @@ async def run_pipeline(
     """Run ingestion + cascade for one client and return the assembled alert."""
     baseline = get_baseline(client.id)
     raw_signals = fetch_public_signals(client.id)
+
+    # Definite re-KYC signals are handled immediately.
+    definite_rekyc_signals, definite_cases = _collect_definite_rekyc_signals(raw_signals)
+    if definite_rekyc_signals:
+        live = LiveProfile(**baseline.model_dump())
+        drift = _no_change_drift(baseline)
+        implies = "Detected definite re-KYC signal(s): " + ", ".join(definite_cases)
+        return _assemble(
+            client,
+            baseline,
+            live,
+            drift,
+            implies,
+            RecommendedAction.re_kyc,
+            definite_rekyc_signals,
+            1,
+            Cost(),
+        )
 
     # Step 1: cheap filter.
     survivors = basic_filter(raw_signals)
