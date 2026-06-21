@@ -137,10 +137,12 @@ across sources and time, logging where each signal dies). This is the AI-Intelli
 invalidated onboarding assumptions, not keyword alerts.
 
 **Done:**
-- [x] Confidence-weighted deltas: `delta = signal.confidence` per dimension instead of binary 1.0/0.0.
-- [x] `_dim_confidence()` maps signal `raw` keys to dimensions to find the max confidence per dimension.
+- [x] Confidence- and recency-weighted deltas per dimension instead of binary 1.0/0.0.
+- [x] `_dim_confidence()` maps signal `raw` keys to dimensions and finds the strongest
+  recency-adjusted confidence per dimension.
+- [x] Deterministic temporal correlation: recent clustered signals contribute more than stale or
+  widely spread signals, using a shared demo-batch reference time.
 - [ ] Per-industry weight overrides (stretch, not started).
-- [ ] Multi-signal correlation across low-confidence dimensions (stretch, not started).
 
 ## How to run and test
 

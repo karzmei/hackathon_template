@@ -9,8 +9,14 @@ import unittest
 
 from tests.factories import make_baseline, make_owner, make_signal
 
-from data.seed import baseline_for, public_signals_for
-from drift_config import HIGH_THRESHOLD, MATERIALITY_THRESHOLD, MEDIUM_THRESHOLD, WEIGHTS
+from data.seed import all_clients, baseline_for, public_signals_for
+from drift_config import (
+    DEMO_BATCH_REFERENCE_AT,
+    HIGH_THRESHOLD,
+    MATERIALITY_THRESHOLD,
+    MEDIUM_THRESHOLD,
+    WEIGHTS,
+)
 from pipeline.drift_engine import (
     _owners_label,
     compute_drift,
@@ -179,6 +185,71 @@ class ComputeDriftTest(unittest.TestCase):
         bm = next(d for d in drift.per_dimension if d.dimension == Dimension.business_model)
         self.assertEqual(bm.delta, 0.9)
 
+    def test_recent_cluster_scores_higher_than_spread_signals(self):
+        baseline = make_baseline()
+        recent = [
+            make_signal(
+                id="business",
+                observed_at="2026-06-20T00:00:00Z",
+                confidence=0.6,
+                raw={"business_model": "Crypto OTC desk"},
+            ),
+            make_signal(
+                id="domain",
+                observed_at="2026-06-19T00:00:00Z",
+                confidence=0.6,
+                raw={"domain": "new.io"},
+            ),
+            make_signal(
+                id="volume",
+                observed_at="2026-06-18T00:00:00Z",
+                confidence=0.6,
+                raw={"expected_volume_band": "high"},
+            ),
+        ]
+        spread = [
+            recent[0].model_copy(update={"observed_at": "2026-01-01T00:00:00Z"}),
+            recent[1].model_copy(update={"observed_at": "2026-03-01T00:00:00Z"}),
+            recent[2],
+        ]
+
+        recent_drift = compute_drift(
+            baseline,
+            compute_live_profile(baseline, recent),
+            recent,
+            "2026-06-20T00:00:00Z",
+        )
+        spread_drift = compute_drift(
+            baseline,
+            compute_live_profile(baseline, spread),
+            spread,
+            "2026-06-20T00:00:00Z",
+        )
+
+        self.assertGreater(recent_drift.aggregate, spread_drift.aggregate)
+        self.assertGreaterEqual(recent_drift.aggregate, MEDIUM_THRESHOLD)
+        self.assertLess(spread_drift.aggregate, MEDIUM_THRESHOLD)
+
+    def test_explicit_reference_decays_stale_signal_deterministically(self):
+        baseline = make_baseline()
+        signals = [
+            make_signal(
+                observed_at="2025-12-01T00:00:00Z",
+                confidence=0.8,
+                raw={"business_model": "Crypto OTC desk"},
+            )
+        ]
+        live = compute_live_profile(baseline, signals)
+
+        first = compute_drift(baseline, live, signals, "2026-06-20T00:00:00Z")
+        second = compute_drift(baseline, live, signals, "2026-06-20T00:00:00Z")
+
+        self.assertEqual(first, second)
+        self.assertLess(
+            first.aggregate,
+            WEIGHTS[Dimension.business_model] * signals[0].confidence,
+        )
+
     def test_invalidated_assumption_formatting(self):
         baseline = make_baseline()
         signals = [make_signal(raw={"business_model": "Crypto OTC desk"})]
@@ -226,6 +297,27 @@ class ComputeDriftTest(unittest.TestCase):
         drift = compute_drift(baseline, live, signals)
         self.assertEqual(drift.band, RiskBand.high)
         self.assertGreaterEqual(drift.aggregate, HIGH_THRESHOLD)
+
+    def test_seed_client_bands_hold_at_demo_reference(self):
+        expected = {
+            "helvetia": RiskBand.high,
+            "lakeside": RiskBand.low,
+            "alpine": RiskBand.high,
+            "rhone": RiskBand.medium,
+            "basel": RiskBand.low,
+            "ticino": RiskBand.low,
+        }
+        for client in all_clients():
+            baseline = baseline_for(client.id)
+            signals = public_signals_for(client.id)
+            live = compute_live_profile(baseline, signals)
+            drift = compute_drift(
+                baseline,
+                live,
+                signals,
+                DEMO_BATCH_REFERENCE_AT,
+            )
+            self.assertEqual(drift.band, expected[client.id], client.id)
 
 
 class RecommendActionTest(unittest.TestCase):

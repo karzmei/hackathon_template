@@ -14,8 +14,15 @@ single biggest risk dominate; many small drifts score less than one large one.
 from __future__ import annotations
 
 import math
+from datetime import datetime, timezone
 
-from drift_config import HIGH_THRESHOLD, MEDIUM_THRESHOLD, WEIGHTS
+from drift_config import (
+    HIGH_THRESHOLD,
+    MEDIUM_THRESHOLD,
+    RECENCY_GRACE_DAYS,
+    RECENCY_HALF_LIFE_DAYS,
+    WEIGHTS,
+)
 from schemas import (
     BaselineProfile,
     Dimension,
@@ -74,22 +81,67 @@ _RAW_KEY_TO_DIM: dict[str, Dimension] = {
 }
 
 
-def _dim_confidence(signals: list[Signal]) -> dict[Dimension, float]:
-    """Return the max signal confidence for each dimension touched by the signal set."""
+def _parse_observed_at(value: str) -> datetime:
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _reference_at(
+    signals: list[Signal],
+    reference_at: str | datetime | None,
+) -> datetime:
+    if isinstance(reference_at, str):
+        return _parse_observed_at(reference_at)
+    if reference_at is not None:
+        if reference_at.tzinfo is None:
+            return reference_at.replace(tzinfo=timezone.utc)
+        return reference_at.astimezone(timezone.utc)
+    return max(_parse_observed_at(signal.observed_at) for signal in signals)
+
+
+def _recency_weight(observed_at: str, reference_at: datetime) -> float:
+    age_days = max(
+        0.0,
+        (reference_at - _parse_observed_at(observed_at)).total_seconds() / 86_400,
+    )
+    decay_days = max(0.0, age_days - RECENCY_GRACE_DAYS)
+    return 0.5 ** (decay_days / RECENCY_HALF_LIFE_DAYS)
+
+
+def _dim_confidence(
+    signals: list[Signal],
+    reference_at: str | datetime | None = None,
+) -> dict[Dimension, float]:
+    """Return each dimension's strongest confidence after deterministic recency decay."""
+    if not signals:
+        return {}
+
+    as_of = _reference_at(signals, reference_at)
     result: dict[Dimension, float] = {}
     for signal in signals:
+        effective_confidence = signal.confidence * _recency_weight(
+            signal.observed_at,
+            as_of,
+        )
         for key, dim in _RAW_KEY_TO_DIM.items():
             if key in (signal.raw or {}):
-                result[dim] = max(result.get(dim, 0.0), signal.confidence)
+                result[dim] = max(result.get(dim, 0.0), effective_confidence)
     return result
 
 
-def compute_drift(baseline: BaselineProfile, live: LiveProfile, signals: list[Signal]) -> DriftScore:
+def compute_drift(
+    baseline: BaselineProfile,
+    live: LiveProfile,
+    signals: list[Signal],
+    reference_at: str | datetime | None = None,
+) -> DriftScore:
     """Diff baseline vs live per dimension and aggregate into a severity-weighted drift score.
 
-    Each changed dimension contributes severity * signal_confidence; the aggregate
-    is the L2 norm (square root of the sum of squared contributions), so the single
-    biggest risk dominates and many small drifts score less than one large one.
+    Each changed dimension contributes severity * recency-adjusted confidence. The
+    aggregate is the L2 norm, so the biggest risk dominates while several recent
+    changes can still cross a threshold together.
     """
     comparisons: list[tuple[Dimension, str, str]] = [
         (Dimension.business_model, baseline.business_model, live.business_model),
@@ -101,7 +153,7 @@ def compute_drift(baseline: BaselineProfile, live: LiveProfile, signals: list[Si
         (Dimension.domain, baseline.domain, live.domain),
     ]
 
-    dim_conf = _dim_confidence(signals)
+    dim_conf = _dim_confidence(signals, reference_at)
     per_dimension: list[DriftDimension] = []
     sum_of_squares = 0.0
     invalidated: list[str] = []
