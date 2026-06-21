@@ -10,8 +10,9 @@ from unittest.mock import patch
 
 import store
 from data.seed import all_clients, baseline_for
-from pipeline.orchestrator import run_pipeline
-from schemas import RecommendedAction, RiskBand, RiskRating
+from pipeline.orchestrator import run_pipeline, _collect_definite_rekyc_signals
+from schemas import Client, RecommendedAction, RiskBand, RiskRating, Signal, SignalKind, Source
+from tests.factories import make_baseline, make_signal
 
 _NO_KEYS = {"GOOGLE_API_KEY": "", "GEMINI_API_KEY": "", "AZURE_API_KEY": "", "PUBLICAI_API_KEY": ""}
 
@@ -60,6 +61,33 @@ class LakesideNoChangeTest(unittest.TestCase):
         self.assertEqual(self.alert.drift_score.aggregate, 0.0)
         self.assertEqual(self.alert.recommended_action, RecommendedAction.no_change)
         self.assertEqual(self.alert.baseline, baseline_for("lakeside"))
+
+
+class DefiniteReKycSignalTest(unittest.TestCase):
+    def setUp(self):
+        store.reset()
+        self.signal = make_signal(
+            id="sig-legal-name",
+            kind=SignalKind.registry_change,
+            summary="Legal name changed from OldCo to NewCo.",
+        )
+
+    def test_collects_definite_rekyc_signal(self):
+        detected, cases = _collect_definite_rekyc_signals([self.signal])
+        self.assertEqual(detected, [self.signal])
+        self.assertEqual(cases, ["legal-name change"])
+
+    def test_run_pipeline_exits_early_on_rekyc_signal(self):
+        with patch.dict("os.environ", _NO_KEYS), patch(
+            "pipeline.orchestrator.fetch_public_signals",
+            return_value=[self.signal],
+        ):
+            alert = asyncio.run(run_pipeline(HELVETIA))
+
+        self.assertEqual(alert.analysis_depth, 1)
+        self.assertEqual(alert.recommended_action, RecommendedAction.re_kyc)
+        self.assertIn("Detected definite re-KYC signal(s): legal-name change", alert.implies)
+        self.assertEqual(alert.cost.usd, 0.0)
 
 
 if __name__ == "__main__":
