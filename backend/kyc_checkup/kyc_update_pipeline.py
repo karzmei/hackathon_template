@@ -138,7 +138,7 @@ def process_trigger(
                         else "Possible business drift detected"
                     )
                 ),
-                details=website_result.explanation,
+                details=website_result.main_reason,
                 status=AlertStatus.new,
                 check_groups=[CheckType.WEBSITE_DOMAIN],
                 created_at=datetime.utcnow().isoformat() + "Z",

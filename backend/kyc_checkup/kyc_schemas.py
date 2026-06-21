@@ -79,16 +79,34 @@ class WebsiteChangeRequest(BaseModel):
     website_text: str
 
 
+AnchorType = Literal[
+    "business_activity",
+    "sectors",
+    "products_services",
+    "customer_types",
+    "geographies",
+    "other",
+]
+MatchLevel = Literal["strong", "moderate", "weak"]
+
+
+class BaselineAnchor(BaseModel):
+    anchor_type: AnchorType
+    text: str
+
+
 class NoGoHit(BaseModel):
     category: str
     term: str
-    evidence: str | None = None
+    evidence_snippet: str | None = None
 
 
 class AnchorMatch(BaseModel):
-    anchor: str
+    anchor_type: AnchorType
+    anchor_text: str
     best_matching_snippet: str
     score: float
+    match_level: MatchLevel
 
 
 class WebsiteChangeResult(BaseModel):
@@ -103,7 +121,9 @@ class WebsiteChangeResult(BaseModel):
     matched_no_go_categories: list[str] = Field(default_factory=list)
     matched_no_go_terms: list[str] = Field(default_factory=list)
     anchor_matches: list[AnchorMatch] = Field(default_factory=list)
-    explanation: str
+    main_reason: str
+    semantic_drift_summary: str
+    no_go_summary: str | None = None
     recommended_action: str
     evidence: list[str] = Field(default_factory=list)
 
