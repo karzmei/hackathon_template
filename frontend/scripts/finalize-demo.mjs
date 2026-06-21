@@ -7,13 +7,16 @@
 // effort: if ffmpeg is missing the script prints the commands and exits cleanly, the webm
 // still stands (note the raw webm keeps the load; the mp4 is the trimmed, looped one).
 import { spawnSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync, rmSync, statSync, copyFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync, rmSync, statSync, copyFileSync } from "node:fs";
 import { join } from "node:path";
+import { buildPassWav } from "./demo-audio.mjs";
 
 const OUT_DIR = join(process.cwd(), "demo-out");
 const WEBM = join(OUT_DIR, "driftwatch-demo.webm");
 const MP4 = join(OUT_DIR, "driftwatch-demo.mp4");
 const PASS_MP4 = join(OUT_DIR, "_pass.mp4");
+const PASS_WAV = join(OUT_DIR, "_pass.wav");
+const PASS_AV = join(OUT_DIR, "_pass_av.mp4");
 
 // Where to cut the opening load (seconds), written by the recorder spec; 0 if absent.
 function readTrimSec() {
@@ -27,6 +30,30 @@ function readTrimSec() {
 
 // How many times the clean pass repeats in the deliverable (default 2).
 const LOOPS = Math.max(1, Number(process.env.DEMO_LOOPS) || 2);
+
+// The action log the recorder spec wrote (clicks/moves/typing with raw-video timestamps).
+function readEvents() {
+  try {
+    const v = JSON.parse(readFileSync(join(OUT_DIR, "events.json"), "utf8")).events;
+    return Array.isArray(v) ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+// Duration of the trimmed pass (seconds) via ffprobe, with an event-log fallback so the synth
+// can still size the track if ffprobe is missing.
+function passDurationSec(events, startSec) {
+  const probe = spawnSync(
+    "ffprobe",
+    ["-v", "error", "-show_entries", "format=duration", "-of", "default=nw=1:nk=1", PASS_MP4],
+    { encoding: "utf8" },
+  );
+  const d = Number(String(probe.stdout).trim());
+  if (Number.isFinite(d) && d > 0) return d;
+  const maxT = events.reduce((m, e) => Math.max(m, e.t + (e.dur || 0)), 0);
+  return Math.max(1, maxT - startSec + 1.0);
+}
 
 // Find the newest .webm Playwright produced under demo-out/.
 function findNewestWebm(dir) {
@@ -69,18 +96,45 @@ if (hasFfmpeg) {
      "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "20", "-an", PASS_MP4],
     { stdio: "inherit" },
   );
-  // 2) Loop the clean pass into the deliverable. Identical encodes concat with a stream copy,
+  // 2) Synthesize a click/move soundtrack from the action log and mux it onto the pass, so the
+  //    deliverable has sound in step with the picture. Looping the muxed file (not the silent
+  //    one) restarts audio and video together each pass, so every loop stays synchronized.
+  //    If there is no event log the pass stays video-only, the original behaviour.
+  const events = readEvents();
+  let withAudio = false;
+  let loopInput = PASS_MP4;
+  if (trim.status === 0 && events && events.length) {
+    const wav = buildPassWav({ events, passDurationSec: passDurationSec(events, startSec), startSec });
+    writeFileSync(PASS_WAV, wav);
+    const mux = spawnSync(
+      "ffmpeg",
+      ["-y", "-i", PASS_MP4, "-i", PASS_WAV,
+       "-c:v", "copy", "-c:a", "aac", "-b:a", "128k", "-shortest", PASS_AV],
+      { stdio: "inherit" },
+    );
+    if (mux.status === 0) {
+      withAudio = true;
+      loopInput = PASS_AV;
+    } else {
+      console.warn("Audio mux failed; falling back to a video-only loop.");
+    }
+  }
+
+  // 3) Loop the clean pass into the deliverable. Identical encodes concat with a stream copy,
   //    so the seam is a hard cut seat-picker -> seat-picker with no reload flash.
   const loop = trim.status === 0
     ? spawnSync(
         "ffmpeg",
-        ["-y", "-stream_loop", String(LOOPS - 1), "-i", PASS_MP4, "-c", "copy", MP4],
+        ["-y", "-stream_loop", String(LOOPS - 1), "-i", loopInput, "-c", "copy", MP4],
         { stdio: "inherit" },
       )
     : { status: 1 };
   try { rmSync(PASS_MP4, { force: true }); } catch {}
+  try { rmSync(PASS_WAV, { force: true }); } catch {}
+  try { rmSync(PASS_AV, { force: true }); } catch {}
   if (trim.status === 0 && loop.status === 0) {
-    console.log(`MP4 (trimmed, looped ${LOOPS}x; use this in Google Slides): ${MP4}`);
+    const audioNote = withAudio ? ", with sound" : "";
+    console.log(`MP4 (trimmed, looped ${LOOPS}x${audioNote}; use this in Google Slides): ${MP4}`);
   } else {
     console.warn("ffmpeg failed; the raw .webm above is still usable.");
   }

@@ -21,6 +21,15 @@ import { join } from "node:path";
 const SPEED = Number(process.env.SPEED) || 3.2;
 const LOOPS = Number(process.env.LOOPS) || 1;
 
+// Action log for the post-step soundtrack. Playwright records video only (no audio), so
+// finalize-demo.mjs synthesizes a click/move track from this log and muxes it on. Times are
+// (Date.now() - t0) / 1000, the same raw-video clock the head-trim uses, so subtracting the
+// trim's startSec maps an event into trimmed-pass time and the click lands where the cut lands.
+// t0 and events are module-level so the glideClick/humanMove helpers can log into them.
+let t0 = 0;
+const now = () => (Date.now() - t0) / 1000;
+const events: { kind: string; t: number; dur?: number; n?: number }[] = [];
+
 // A visible gold cursor that follows the mouse, so glides read on camera. Injected
 // after the app has hydrated (not via addInitScript) to avoid disturbing hydration;
 // idempotent, so calling it once per pass is safe.
@@ -58,6 +67,7 @@ let cursor = { x: 960, y: 160 };
 // direction, the easing slows the ends, and a tiny per-step pause gives it real motion.
 async function humanMove(page: Page, x: number, y: number) {
   const start = { ...cursor };
+  const tStart = now();
   const dx = x - start.x;
   const dy = y - start.y;
   const dist = Math.hypot(dx, dy) || 1;
@@ -81,6 +91,8 @@ async function humanMove(page: Page, x: number, y: number) {
   }
   await page.mouse.move(x, y);
   cursor = { x, y };
+  // One swish segment per glide; the synth fades a faint noise band over [t, t+dur].
+  events.push({ kind: "move", t: tStart, dur: now() - tStart });
 }
 
 // Glide the cursor to an element, then click it reliably. The glide is the on-camera
@@ -92,6 +104,9 @@ async function glideClick(page: Page, locator: Locator) {
     await humanMove(page, box.x + box.width / 2, box.y + box.height / 2);
     await beat(page, 140);
   }
+  // Single choke point for every filmed click (clickExpectChange routes through here too),
+  // so each click is logged exactly once, just before the React handler fires.
+  events.push({ kind: "click", t: now() });
   await locator.click();
 }
 
@@ -113,7 +128,7 @@ async function clickExpectChange(page: Page, locator: Locator, signal: () => Pro
 test("demo recording: full sweep, looped", async ({ page }) => {
   // Captured as close to recording start as we can get; readyMs below is measured from here
   // so finalize-demo.mjs knows where to trim the opening browser load out of the video.
-  const t0 = Date.now();
+  t0 = Date.now();
 
   // Change signals for clickExpectChange. bodyText covers navigation and case swaps (login
   // <-> app, case A -> case B, the decision banner, the sent bubble, the COST navigation all
@@ -181,10 +196,12 @@ test("demo recording: full sweep, looped", async ({ page }) => {
     await clickExpectChange(page, toRow.getByRole("button", { name: /Compliance/ }), placeholderText);
     const draft = page.getByPlaceholder(/Message Sofia/);
     await glideClick(page, draft);
-    await draft.pressSequentially(
-      "Sending the crypto OTC pivot up for a Re-KYC call; the new BVI shareholder needs a second-line decision.",
-      { delay: 16 },
-    );
+    const message =
+      "Sending the crypto OTC pivot up for a Re-KYC call; the new BVI shareholder needs a second-line decision.";
+    const typeStart = now();
+    await draft.pressSequentially(message, { delay: 16 });
+    // Faint per-key ticks over the typing interval (the synth spaces n ticks across [t, t+dur]).
+    events.push({ kind: "type", t: typeStart, dur: now() - typeStart, n: message.length });
     await beat(page, 350);
     await clickExpectChange(page, page.getByRole("button", { name: "Send message" }), bodyText);
     await expect(page.getByText(/the new BVI shareholder needs a second-line decision/)).toBeVisible();
@@ -211,4 +228,10 @@ test("demo recording: full sweep, looped", async ({ page }) => {
     await expect(page.getByText("COST & EFFICIENCY")).toBeVisible();
     await beat(page, 900);
   }
+
+  // Hand the action log to the post-step. LOOPS defaults to 1, so events hold one clean pass;
+  // finalize-demo.mjs synthesizes the soundtrack from these and loops it with the video in sync.
+  const outDir = join(process.cwd(), "demo-out");
+  mkdirSync(outDir, { recursive: true });
+  writeFileSync(join(outDir, "events.json"), JSON.stringify({ events }));
 });
