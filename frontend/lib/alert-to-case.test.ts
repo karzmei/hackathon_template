@@ -125,6 +125,34 @@ describe("alertToCase mapping", () => {
     ]);
   });
 
+  it("cites a GDELT adverse-media signal with its compact seendate parsed", () => {
+    const c = alertToCase(
+      helvetiaAlert({
+        signals: [
+          {
+            id: "gd-1",
+            client_id: "helvetia",
+            source: "gdelt",
+            observed_at: "20260620T100000Z", // GDELT seendate (compact, no dashes)
+            kind: "adverse_media",
+            summary: "Director named in FINMA enforcement probe",
+            evidence_url: "https://news.test/probe",
+            confidence: 0.6,
+            raw: {},
+          },
+        ],
+      }),
+    );
+    expect(c.changes).toEqual([
+      {
+        dir: "negative",
+        text: "Director named in FINMA enforcement probe",
+        src: "GDELT media · 20 Jun", // source label + compact date parsed
+        url: "https://news.test/probe",
+      },
+    ]);
+  });
+
   it("derives key facts from the live profile, flagging unscreened owners", () => {
     const c = alertToCase(helvetiaAlert());
     expect(c.facts).toContain("Legal form AG");

@@ -87,10 +87,11 @@ function titleCase(key: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-// Format an ISO date or datetime ("2026-05-04", "2026-05-04T08:00:00Z") as "4 May".
+// Format a date or datetime as "4 May". Accepts dashed ISO ("2026-05-04",
+// "2026-05-04T08:00:00Z") and GDELT's compact form ("20260504", "20260504T080000Z").
 // Parsed by hand to stay timezone-independent and deterministic under fake timers.
 function shortDate(iso: string): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || "");
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || "") ?? /^(\d{4})(\d{2})(\d{2})/.exec(iso || "");
   if (!m) return "";
   const day = Number(m[3]);
   const month = MONTHS[Number(m[2]) - 1] ?? "";
