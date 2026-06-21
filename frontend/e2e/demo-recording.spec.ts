@@ -5,9 +5,12 @@ import { join } from "node:path";
 // Scripted demo recorder. Drives the real cockpit through its strongest moments and
 // records the run as a 1920x1080 video for the pitch's solution slide. It is offline
 // and deterministic: a fresh context seeds the same seven cases into localStorage, so
-// Helvetia is HIGH every take. The expect() calls double as a smoke test, a failure
-// here means an impressive section stopped rendering. Run via: npm run record:demo
-// (see playwright.demo.config.ts). Tune pace with $env:SPEED and passes with $env:LOOPS.
+// Helvetia is HIGH every take. The narrative follows the real flow of control: the RM
+// seat first (first contact; opens the case and texts Compliance), then a single switch
+// up to the Compliance seat which decides Re-KYC, then the cost dashboard. The expect()
+// calls double as a smoke test, a failure here means an impressive section stopped
+// rendering. Run via: npm run record:demo (see playwright.demo.config.ts). Tune pace with
+// $env:SPEED and passes with $env:LOOPS.
 
 // We record ONE clean pass (LOOPS=1) and build the loop in post (finalize-demo.mjs):
 // no in-browser reset means no white reload flash mid-video, and it drops a second
@@ -146,14 +149,14 @@ test("demo recording: full sweep, looped", async ({ page }) => {
     // giving the head-trim slack regardless of SPEED.
     await page.waitForTimeout(1000);
 
-    // 2) Take the Compliance seat; it can both open the case file and take the decision.
-    await clickExpectChange(page, page.getByRole("button", { name: /Sofia Keller/ }), bodyText);
-    await expect(page.getByText("Escalations · ranked")).toBeVisible();
+    // 2) Take the RM seat. The relationship manager is first contact; the case starts on the 1st line.
+    await clickExpectChange(page, page.getByRole("button", { name: /Lena Brunner/ }), bodyText);
+    await expect(page.getByText("Your book")).toBeVisible();
     await beat(page, 500);
 
-    // 3) Inbox drives the case file. The cockpit opens already landed on the top-ranked case
-    //    (Castor Mining Ltd, the adverse-media escalation); open Helvetia, the HIGH-risk crypto
-    //    pivot, for the narrative. One selection change, no back-and-forth. Hold on the risk delta.
+    // 3) The book opens already landed on the top-ranked case (Castor Mining Ltd, the adverse-media
+    //    escalation); open Helvetia, the HIGH-risk crypto pivot, for the narrative. One selection
+    //    change, no back-and-forth. Hold on the risk delta.
     await expect(page.getByRole("heading", { name: "Castor Mining Ltd" })).toBeVisible();
     await clickExpectChange(page, page.getByRole("button", { name: /Helvetia Capital AG/ }), bodyText);
     await expect(page.getByRole("heading", { name: "Helvetia Capital AG" })).toBeVisible();
@@ -166,26 +169,11 @@ test("demo recording: full sweep, looped", async ({ page }) => {
     // 5) What changed: the source-cited timeline (SaaS -> crypto OTC, new BVI shareholder).
     await reveal(page, page.getByText("WHAT CHANGED"), 950);
 
-    // 6) The recommendation card and the decision actions.
+    // 6) The recommendation: the first line's call, escalate to Compliance.
     await reveal(page, page.getByText("RECOMMENDED").first(), 550);
 
-    // 7) Second-line decision: require Re-KYC. The decided banner is written to the log.
-    await clickExpectChange(page, page.getByRole("button", { name: /Require Re-KYC/ }), bodyText);
-    await expect(page.getByText(/written to audit log/)).toBeVisible();
-    await beat(page, 1100);
-
-    // 8) Close the loop: switch to the RM seat, where the Re-KYC instruction lands back down.
-    //    The RM book also opens on the top case (Castor); open Helvetia once, no back-and-forth.
-    await clickExpectChange(page, page.getByRole("button", { name: "SWITCH ROLE" }), bodyText);
-    await clickExpectChange(page, page.getByRole("button", { name: /Lena Brunner/ }), bodyText);
-    await expect(page.getByRole("heading", { name: "Castor Mining Ltd" })).toBeVisible();
-    await clickExpectChange(page, page.getByRole("button", { name: /Helvetia Capital AG/ }), bodyText);
-    await expect(page.getByRole("button", { name: "Confirm Re-KYC initiated" })).toBeVisible();
-    await beat(page, 900);
-
-    // 8b) The human handoff: the first line acknowledges back up to the second line. As the RM,
-    //     pick the second recipient (the Compliance manager) so the draft visibly retargets, then
-    //     type and send the acknowledgement. Recorded once in the single pass.
+    // 7) The 1st line texts the 2nd line. As the RM, retarget the draft from the default Account
+    //    Manager to Compliance (the placeholder retargets), then send the escalation context.
     await reveal(page, page.getByText("CASE CONVERSATION"), 500);
     // Scope to the "To:" row so /Compliance/ matches the recipient pill, not a case row whose
     // status text also mentions compliance.
@@ -194,15 +182,30 @@ test("demo recording: full sweep, looped", async ({ page }) => {
     const draft = page.getByPlaceholder(/Message Sofia/);
     await glideClick(page, draft);
     await draft.pressSequentially(
-      "Re-KYC initiated on the crypto OTC pivot. Confirming UBO on the new BVI shareholder; will report back.",
+      "Sending the crypto OTC pivot up for a Re-KYC call; the new BVI shareholder needs a second-line decision.",
       { delay: 16 },
     );
     await beat(page, 350);
     await clickExpectChange(page, page.getByRole("button", { name: "Send message" }), bodyText);
-    await expect(page.getByText(/Confirming UBO on the new BVI shareholder/)).toBeVisible();
+    await expect(page.getByText(/the new BVI shareholder needs a second-line decision/)).toBeVisible();
     await beat(page, 1000);
 
-    // 9) Cost and efficiency: a quick glance at the tokens/metrics dashboard where the
+    // 8) Switch up to the Compliance seat, where the escalation lands. The inbox also opens on the
+    //    top case (Castor); open Helvetia once, no back-and-forth.
+    await clickExpectChange(page, page.getByRole("button", { name: "SWITCH ROLE" }), bodyText);
+    await clickExpectChange(page, page.getByRole("button", { name: /Sofia Keller/ }), bodyText);
+    await expect(page.getByText("Escalations · ranked")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Castor Mining Ltd" })).toBeVisible();
+    await clickExpectChange(page, page.getByRole("button", { name: /Helvetia Capital AG/ }), bodyText);
+    await expect(page.getByRole("heading", { name: "Helvetia Capital AG" })).toBeVisible();
+    await beat(page, 900);
+
+    // 9) Second-line decision: require Re-KYC. The decided banner is written to the audit log.
+    await clickExpectChange(page, page.getByRole("button", { name: /Require Re-KYC/ }), bodyText);
+    await expect(page.getByText(/written to audit log/)).toBeVisible();
+    await beat(page, 1100);
+
+    // 10) Cost and efficiency: a quick glance at the tokens/metrics dashboard where the
     // staged cascade pays off (a judging criterion).
     await clickExpectChange(page, page.getByRole("link", { name: "COST" }), bodyText);
     await expect(page.getByText("COST & EFFICIENCY")).toBeVisible();
