@@ -69,7 +69,8 @@ Request flow: `frontend/lib/api.ts` -> FastAPI routes in `backend/main.py` -> `p
   (mid-tier deployment); step3 (`step3_analysis.py`) runs the deterministic `drift_engine.py` then a
   deep LLM narrative; step4 = human decision (the only path that mutates risk state, always writing
   an append-only audit event). Scoring weights and band thresholds are tunable in one place,
-  `backend/drift_config.py`, so a tweak there moves every alert's band without touching step code.
+  `backend/drift_config.py`; signal contributions also decay deterministically after a configurable
+  recent window, using one fixed reference time for the demo batch.
 - **Deployments:** the SwissHacks Azure Foundry project has exactly one model deployed,
   `gpt-4.1-mini`, so both `AZURE_OPENAI_DEPLOYMENT_REASONING` (step 2) and
   `AZURE_OPENAI_DEPLOYMENT_DEEP` (step 3) point at it; there is no separate deep tier until a

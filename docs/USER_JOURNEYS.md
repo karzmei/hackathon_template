@@ -169,7 +169,7 @@ and Lakeside Trading AG (immaterial, dies early).
 
 1. `POST /api/run` resets the store and replays both clients.
 2. Helvetia climbs LOW -> HIGH: `analysis_depth` 3, `recommended_action` re_kyc, drift aggregate
-   ~0.87 in offline mode (the engine weights each changed dimension by signal confidence), with six
+   ~0.87 in offline mode (the engine weights each changed dimension by confidence and recency), with six
    invalidated assumptions and owners 2 -> 3 (one unscreened). Cost is non-zero (about $0.0022).
 3. Lakeside stays quiet: its one low-confidence signal dies at step 1, so `analysis_depth` is 1 and
    cost is $0.00 ("baseline confirmed").

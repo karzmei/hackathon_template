@@ -32,5 +32,11 @@ WEIGHTS: dict[Dimension, float] = {
 HIGH_THRESHOLD = 0.8
 MEDIUM_THRESHOLD = 0.45
 
+# Signals remain fully weighted during the recent window, then lose half their
+# influence every half-life. The fixed demo reference keeps batch runs repeatable.
+RECENCY_GRACE_DAYS = 45
+RECENCY_HALF_LIFE_DAYS = 90
+DEMO_BATCH_REFERENCE_AT = "2026-06-20T10:30:00Z"
+
 # Signals below this confidence are treated as immaterial noise and dropped at step 1.
 MATERIALITY_THRESHOLD = 0.35

@@ -8,6 +8,8 @@ that turns the invalidated assumptions into a short "what this implies" narrativ
 
 from __future__ import annotations
 
+from datetime import datetime
+
 import config
 from llm.adk_agent import run_agent
 from schemas import BaselineProfile, Cost, DriftScore, LiveProfile, RecommendedAction, Signal
@@ -72,10 +74,12 @@ def _offline_narrative(drift: DriftScore, action: RecommendedAction) -> str:
 
 
 async def deep_analysis(
-    baseline: BaselineProfile, signals: list[Signal]
+    baseline: BaselineProfile,
+    signals: list[Signal],
+    reference_at: str | datetime | None = None,
 ) -> tuple[DriftScore, LiveProfile, str, RecommendedAction, Cost]:
     live = compute_live_profile(baseline, signals)
-    drift = compute_drift(baseline, live, signals)
+    drift = compute_drift(baseline, live, signals, reference_at)
     action = recommend_action(drift)
 
     result = await run_agent(

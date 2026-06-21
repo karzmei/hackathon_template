@@ -9,6 +9,7 @@ baseline, only this final assembly and the drift engine do.
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 
 import store
 from schemas import (
@@ -111,7 +112,10 @@ def _assemble(
     return alert
 
 
-async def run_pipeline(client: Client) -> Alert:
+async def run_pipeline(
+    client: Client,
+    reference_at: str | datetime | None = None,
+) -> Alert:
     """Run ingestion + cascade for one client and return the assembled alert."""
     baseline = get_baseline(client.id)
     raw_signals = fetch_public_signals(client.id)
@@ -136,6 +140,10 @@ async def run_pipeline(client: Client) -> Alert:
         return _assemble(client, baseline, live, drift, implies, RecommendedAction.no_change, [], 2, cost2, cost_step2=cost2)
 
     # Step 3: deep analysis (drift engine reads the baseline here).
-    drift, live, implies, action, cost3 = await deep_analysis(baseline, survivors2)
+    drift, live, implies, action, cost3 = await deep_analysis(
+        baseline,
+        survivors2,
+        reference_at,
+    )
     total_cost = cost2.add(cost3)
     return _assemble(client, baseline, live, drift, implies, action, survivors2, 3, total_cost, cost_step2=cost2, cost_step3=cost3)

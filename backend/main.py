@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import config
 import store
+from drift_config import DEMO_BATCH_REFERENCE_AT
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from schemas import (
@@ -65,7 +66,7 @@ async def run() -> RunResponse:
     """Demo trigger: run ingestion + cascade for all seed clients."""
     store.reset()
     for client in all_clients():
-        await run_pipeline(client)
+        await run_pipeline(client, reference_at=DEMO_BATCH_REFERENCE_AT)
     return RunResponse(alerts=_sorted_rows())
 
 
